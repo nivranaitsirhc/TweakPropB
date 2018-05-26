@@ -204,7 +204,7 @@ install_main() {
 	failsafe_backup backup
 	
 	ui_print " - Tweaking props"
-	(tweakprop_me) || {
+	tweakprop_me || {
 		ui_print " - ERROR Restoring Backup"
 		failsafe_backup restore
 	} && {
