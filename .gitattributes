@@ -1,0 +1,6 @@
+# Auto detect text files and perform LF normalization
+*.sh			text	eol=lf
+*				text	eol=lf
+
+ufs/core/bin	binary
+ufs/system		binary

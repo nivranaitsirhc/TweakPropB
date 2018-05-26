@@ -1,0 +1,6 @@
+*.zip
+*.txt
+*.cmd
+*.md5
+*.exe
+ufs/system/*
