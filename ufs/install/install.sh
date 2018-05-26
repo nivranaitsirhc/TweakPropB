@@ -34,11 +34,13 @@ install_main() {
 	TMH7="rev: $uFS_rev_ver"
 	TMH8="#"
 	
+	print_header;
+	
 	export status_failsafe=false
 	addon_filename="10-tweakpropB.sh"
 	tweakpropB_loc=$COREDIR/install/$addon_filename
 	
-	tweak_list=
+	tweak_list=;
 	
 	
 	backup() {

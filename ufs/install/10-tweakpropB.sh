@@ -240,8 +240,8 @@ addon_TPB_tweakprop_me() {
 	# remounting /system && /data
 	! is_mounted /system rw && {
 		ui_print " - Remounting system"
-		remount_mountpoint /system rw
-	} || addon_TPB_ex_s "Failed to get RW access on /system"
+		remount_mountpoint /system rw || addon_TPB_ex_s "Failed to get RW access on /system"
+	}
 
 	
 	echo "" >> "$build"
@@ -251,7 +251,7 @@ addon_TPB_tweakprop_me() {
 
 	ui_print " - Performing tweaks"
 	
-	t_count=
+	t_count=0;
 	
 	# read only lines matching valid entry pattern (someVAR=someVAL, !someSTR, @someENTR|someSTR, $someVAR=someVAL)
 	for line in $(echo "${tweak_prop#?}" | sed -r '/(^#|^ *$|^BACKUP=|^backup=|^Backup=)/d;/(.*=.*|^\!|^\@.*\|.*|^\$.*\|.*)/!d'); do
@@ -325,6 +325,20 @@ addon_TPB_tweakprop_me() {
 # Pre-Initialization
 #--------------------------------------------------------------------------#
 
+# CREATE A TEMP. PLACEHOLDER FOR LOGGING
+COLD_TMP=/tmp/$addon_name.log
+
+# CREATE THE COLD LOG HEADER
+[ ! -e $COLD_TMP ] && {
+	file_log " "
+	file_log "uniFlashScript addon.d logs"
+	file_log " "
+	file_log "$addon_name"
+	file_log "src ver. : $addon_src_ver"
+	file_log "src rev. : $addon_app_rev"$'\n\n\n'
+}
+
+
 # Title Header
 TMH1="addon.script"
 TMH2="*******************************"
@@ -371,10 +385,17 @@ case "$1" in
 	addon_TPB_failsafe_backup backup
 	
 	# Installing Script
-	(addon_TPB_tweakprop_me) || {
+	addon_TPB_tweakprop_me || {
 		ui_print " - TweakPropB Encountered an Error"
 		addon_TPB_failsafe_backup restore
 	}
+	
+	# FLUSH THE FILE LOG TO THE LOGFILE
+	LOG_FILE=/sdcard/logs/ufs/ota/"$addon_name"'_'$(date "+%Y-%m-%d_%H-%M-%S").log
+	cat $COLD_TMP > $LOG_FILE
+	# remove
+	rm -rf $COLD_TMP
+	
   ;;
 esac
 
