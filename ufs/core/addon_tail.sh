@@ -47,21 +47,50 @@ file_log() {
 	printf "$IN\n"
 }
 
-# local set_perm
-set_perm() {
-	[[ -n "$1" && -n "$2" && -n "$3" && -n "$4" ]] && {
-		chown $1.$2 $4
-		chown $1:$2 $4
-		chmod $3 $4
-	}
-}
-
 # ASLIB EXPORTED FUNCTIONS
 # _____________________________________________________________________________ <- 80 char
 #
 
 # REDIRECT ASLIB LOGGING TO LOCAL LOGGING
 LT1=file_log;LT2=file_log;LT3=file_log;LT4=file_log;
+
+##### ASLIB.SET_PERM
+set_perm() {
+	$LT2 "I: ASLIB set_perm: setting permission $1 - $2 $3 $4 $5"
+	[[ -n "$1" && -n "$2" && -n "$3" && -n "$4" ]] && {
+		chown $1.$2 $4
+		chown $1:$2 $4
+		chmod $3 $4
+	}
+	
+	[ -n "$4" ] && {
+		ch_con $4
+		[ -n "$5" ] && ch_con_ext $4 $5
+	}
+}
+
+##### ASLIB.SUB.CH_CON
+ch_con() {
+	$LT4 "D: ASLIB exec ch_con"
+	LD_LIBRARY_PATH=$SYSTEMLIB /system/bin/toybox chcon -h u:object_r:system_file:s0 $1  >/dev/null 2>&1
+	LD_LIBRARY_PATH=$SYSTEMLIB /system/toolbox chcon -h u:object_r:system_file:s0 $1     >/dev/null 2>&1
+	LD_LIBRARY_PATH=$SYSTEMLIB /system/bin/toolbox chcon -h u:object_r:system_file:s0 $1 >/dev/null 2>&1
+	chcon -h u:object_r:system_file:s0 $1                                                >/dev/null 2>&1
+	LD_LIBRARY_PATH=$SYSTEMLIB /system/bin/toybox chcon u:object_r:system_file:s0 $1     >/dev/null 2>&1
+	LD_LIBRARY_PATH=$SYSTEMLIB /system/toolbox chcon u:object_r:system_file:s0 $1        >/dev/null 2>&1
+	LD_LIBRARY_PATH=$SYSTEMLIB /system/bin/toolbox chcon u:object_r:system_file:s0 $1    >/dev/null 2>&1
+	chcon u:object_r:system_file:s0 $1                                                   >/dev/null 2>&1
+}
+
+##### ASLIB.SUB.CH_CON_EXT
+ch_con_ext() { # sub-function of set_perm
+	$LT4 "D: ASLIB exec ch_con_ext"
+	LD_LIBRARY_PATH=$SYSTEMLIB /system/bin/toybox chcon $2 $1   >/dev/null 2>&1
+	LD_LIBRARY_PATH=$SYSTEMLIB /system/toolbox chcon $2 $1	  	>/dev/null 2>&1
+	LD_LIBRARY_PATH=$SYSTEMLIB /system/bin/toolbox chcon $2     >/dev/null 2>&1
+	chcon $2 $1                                                 >/dev/null 2>&1
+}
+
 
 # ASLIB.SUB.PRINT_HEADER
 print_header(){
@@ -84,9 +113,9 @@ print_header(){
 	done
 }
 
-# ASLIB.SUB.IS_MOUNTED
+##### ASLIB.SUB.IS_MOUNTED
 is_mounted() {
-	local s
+	$LT4 "D: ASLIB exec is_mounted with $1 $2"
 	[ -n "$2" ] && {
 		cat /proc/mounts | grep $1 | grep $2, >/dev/null 2>&1
 		s=$?
@@ -95,17 +124,40 @@ is_mounted() {
 		s=$?
 	}
 	[ "$s" == "0" ] && \
-	$LT3 "I: ASLIB is_mounted: $1 is mounted $2" || \
-	$LT3 "I: ASLIB is_mounted: $1 is not mounted"
-	
+	$LT4 "D: ASLIB is_mounted: $1 is mounted $2" || \
+	$LT4 "D: ASLIB is_mounted: $1 is not mounted"
 	return $s
 }
 
-# ASLIB.SUB.TOOLBOX_MOUNT
+###### ASLIB.SUB.IS_ENABLED
+is_enabled() {
+	$LT4 "D: ASLIB exec is_enabled with $1"
+	[ -z "$1" ] && return 1
+	eval ie_t='$'$1
+	case $ie_t in
+		1|enable|true|True|TRUE|ENABLED|ENABLE) 
+			$LT4 "I: ASLIB is_enabled: ENABLED, by $1 set to $ie_t"
+			s=0
+		;;
+		0|disable|false|False|FALSE|DISABLED|DISABLE|' ')
+			$LT4 "I: ASLIB is_enabled: DISABLED, by $1 set to $ie_t"
+			s=1
+		;;
+		*) 	$LT4 "E: ASLIB is_enabled: unknown state of $1 set to $ie_t, returning 1"
+			s=1
+		;;
+	esac
+	return $s
+}
+
+##### ASLIB.SUB.TOOLBOX_MOUNT
 toolbox_mount() {
+	$LT4 "D: ASLIB exec toolbox_mount $1 $2"
 	# default to READ_WRITE
 	local RW=rw
 	[ ! -z "$2" ] && RW=$2
+	
+	$LT4 "D: ASLIB toolbox_mount: mounting using using /etc/fstab entry"
 
 	local DEV=;
 	local POINT=;
@@ -121,10 +173,15 @@ toolbox_mount() {
 			break
 		fi
 	done
-
-	(! is_mounted $1 $RW) && mount -t $FS -o $RW $DEV $POINT               >/dev/null 2>&1
-	(! is_mounted $1 $RW) && mount -t $FS -o $RW,remount $DEV $POINT       >/dev/null 2>&1
-
+	
+	$LT4 "D: ASLIB toolbox_mount: exec mount -t $FS -o $RW $DEV $POINT"
+	! mount -t $FS -o $RW $DEV $POINT               >/dev/null 2>&1 && \
+	$LT4 "D: ASLIB toolbox_mount: exec mount -t $FS -o $RW,remount $DEV $POINT" && \
+	! mount -t $FS -o $RW,remount $DEV $POINT       >/dev/null 2>&1 || return 0
+	
+	
+	$LT4 "D: ASLIB toolbox_mount: mounting using using /etc/recovery.fstab"
+	
 	DEV=;POINT=;FS=;
 	
 	for i in `cat /etc/recovery.fstab | grep "$1"`; do
@@ -137,30 +194,42 @@ toolbox_mount() {
 			break
 		fi
 	done
-
-	if [ "$FS" = "emmc" ];then
-		(! is_mounted $1 $RW) && mount -t ext4 -o $RW $DEV $POINT            >/dev/null 2>&1
-		(! is_mounted $1 $RW) && mount -t ext4 -o $RW,remount $DEV $POINT    >/dev/null 2>&1
-		(! is_mounted $1 $RW) && mount -t f2fs -o $RW $DEV $POINT            >/dev/null 2>&1
-		(! is_mounted $1 $RW) && mount -t f2fs -o $RW,remount $DEV $POINT    >/dev/null 2>&1
+	
+	if [ "$FS" = "emmc" ]; then
+		$LT4 "D: ASLIB toolbox_mount: exec mount -t ext4 -o $RW $DEV $POINT"
+		! mount -t ext4 -o $RW $DEV $POINT            >/dev/null 2>&1 && \
+		$LT4 "D: ASLIB toolbox_mount: exec mount -t ext4 -o $RW,remount $DEV $POINT" && \
+		! mount -t ext4 -o $RW,remount $DEV $POINT    >/dev/null 2>&1 && \
+		$LT4 "D: ASLIB toolbox_mount: exec mount -t f2fs -o $RW $DEV $POINT" && \
+		! mount -t f2fs -o $RW $DEV $POINT            >/dev/null 2>&1 && \
+		$LT4 "D: ASLIB toolbox_mount: exec mount -t f2fs -o $RW,remount $DEV $POINT" && \
+		! mount -t f2fs -o $RW,remount $DEV $POINT    >/dev/null 2>&1 || return 0
 	else
-		(! is_mounted $1 $RW) && mount -t $FS -o $RW $DEV $POINT             >/dev/null 2>&1
-		(! is_mounted $1 $RW) && mount -t $FS -o $RW,remount $DEV $POINT     >/dev/null 2>&1
+		$LT4 "D: ASLIB toolbox_mount: exec mount -t $FS -o $RW $DEV $POINT"
+		! mount -t $FS -o $RW $DEV $POINT             >/dev/null 2>&1 && \
+		$LT4 "D: ASLIB toolbox_mount: exec mount -t $FS -o $RW,remount $DEV $POINT" && \
+		! mount -t $FS -o $RW,remount $DEV $POINT     >/dev/null 2>&1 || return 0
 	fi
+	return 1 # FAILED TO MOUNT
 }
+
 
 ##### ASLIB.SUB.REMOUNT_MOUNTPOINT
 remount_mountpoint() {
-	$LT2 "I: ASLIB remount_mountpoint: checking $1 $2"
+	$LT4 "D: ASLIB exec remount_mountpoint"
 	[ -n "$*" ] && {
-		(! is_mounted $1 $2) && mount -o $2,remount $1    >/dev/null 2>&1
-		(! is_mounted $1 $2) && mount -o $2,remount $1 $1 >/dev/null 2>&1
-		(! is_mounted $1 $2) && toolbox_mount $1          >/dev/null 2>&1
-		(! is_mounted $1 $2) && {
-			$LT3 "I: ASLIB remount_mountpoint: failed to remount"
+		! is_mounted $1 $2 && \
+		$LT4 "D: ASLIB remount_mountpoint: exec mount -o $2,remount $1" && \
+		! mount -o $2,remount $1    >/dev/null 2>&1 && \
+		$LT4 "D: ASLIB remount_mountpoint: exec mount -o $2,remount $1 $1" && \
+		! mount -o $2,remount $1 $1 >/dev/null 2>&1 && \
+		$LT4 "D: ASLIB remount_mountpoint: exec toolbox_mount $1" && \
+		! toolbox_mount $1          >/dev/null 2>&1 && \
+		{
+			$LT3 "I: ASLIB remount_mountpoint: $1 failed to remount"
 			stat=1
 		} || {
-			$LT3 "I: ASLIB remount_mountpoint: remounted successfully"
+			$LT3 "I: ASLIB remount_mountpoint: $1 remounted successfully"
 			stat=0
 		}
 		return $stat
@@ -169,23 +238,24 @@ remount_mountpoint() {
 
 ###### ASLIB.SUB.SET_SYSTEM_FP
 set_system_fp() {
+	$LT4 "D: ASLIB exec set_system_fp"
 	[[ "$(echo ${1} | cut -d / -f 2-2)" != "system" ]] && {
 		$LT2 "E: ASLIB set_system_fp: not valid system file input $1"
 		$LT3 "W: ASLIB set_system_fp: only system files with full path are accepted"
 	}
 	
-	_sys="$(echo ${1} | cut -d / -f 3-3)"
+	local _sys="$(echo ${1} | cut -d / -f 3-3)"
 	
 	case $_sys in
 		bin|xbin)
-			set_perm 0 0 0755 $1
+			set_perm 0 2000 0755 $1
 			chmod +x $1
 		;;
 		vendor)
-			_sysv="$(echo ${1} | cut -d / -f 4-4)"
+			local _sysv="$(echo ${1} | cut -d / -f 4-4)"
 			case $_sysv in
 				bin|xbin)
-				set_perm 0 0 0755 $1
+				set_perm 0 2000 0755 $1
 				chmod +x $1
 				;;
 				*)
@@ -214,7 +284,7 @@ COLD_TMP=/tmp/$addon_name.log
 	file_log " "
 	file_log "$addon_name"
 	file_log "src ver. : $addon_src_ver"
-	file_log "src rev. : $addon_app_rev"
+	file_log "src rev. : $addon_app_rev"$'\n\n\n'
 }
 
 # CUSTOM UI_PRINT HEADER
