@@ -1,0 +1,90 @@
+#!/sbin/sh
+#
+# aslib library
+#
+
+##### ASLIB.SUB.SET_PERM
+# - set_perm	input1 input2 input3 input4 input 5
+# input1		-> chown user	!--important--!
+# input2		-> chown group	!--important--!
+# input3		-> chmod setup	!--important--!
+# input4		-> target_file	!--important--!
+set_perm() {
+	$LT2 "I: ASLIB set_perm: setting permission $1 - $2 $3 $4 $5"
+	[[ -n "$1" && -n "$2" && -n "$3" && -n "$4" ]] && {
+		chown $1.$2 $4
+		chown $1:$2 $4
+		chmod $3 $4
+	}
+	
+	[ -n "$4" ] && {
+		ch_con $4
+		[ -n "$5" ] && ch_con_ext $4 $5
+	}
+}
+
+##### ASLIB.SUB.CH_CON
+ch_con() {
+	$LT4 "D: ASLIB exec ch_con"
+	LD_LIBRARY_PATH=$SYSTEMLIB /system/bin/toybox chcon -h u:object_r:system_file:s0 $1  >/dev/null 2>&1
+	LD_LIBRARY_PATH=$SYSTEMLIB /system/toolbox chcon -h u:object_r:system_file:s0 $1     >/dev/null 2>&1
+	LD_LIBRARY_PATH=$SYSTEMLIB /system/bin/toolbox chcon -h u:object_r:system_file:s0 $1 >/dev/null 2>&1
+	chcon -h u:object_r:system_file:s0 $1                                                >/dev/null 2>&1
+	LD_LIBRARY_PATH=$SYSTEMLIB /system/bin/toybox chcon u:object_r:system_file:s0 $1     >/dev/null 2>&1
+	LD_LIBRARY_PATH=$SYSTEMLIB /system/toolbox chcon u:object_r:system_file:s0 $1        >/dev/null 2>&1
+	LD_LIBRARY_PATH=$SYSTEMLIB /system/bin/toolbox chcon u:object_r:system_file:s0 $1    >/dev/null 2>&1
+	chcon u:object_r:system_file:s0 $1                                                   >/dev/null 2>&1
+}
+
+##### ASLIB.SUB.CH_CON_EXT
+ch_con_ext() { # sub-function of set_perm
+	$LT4 "D: ASLIB exec ch_con_ext"
+	LD_LIBRARY_PATH=$SYSTEMLIB /system/bin/toybox chcon $2 $1   >/dev/null 2>&1
+	LD_LIBRARY_PATH=$SYSTEMLIB /system/toolbox chcon $2 $1	  	>/dev/null 2>&1
+	LD_LIBRARY_PATH=$SYSTEMLIB /system/bin/toolbox chcon $2     >/dev/null 2>&1
+	chcon $2 $1                                                 >/dev/null 2>&1
+}
+
+
+##### ASLIB.SUB.LN_CON
+ln_con() {
+	$LT4 "D: ASLIB exec ln_con"
+	LD_LIBRARY_PATH=$SYSTEMLIB /system/bin/toybox ln -s $1 $2 	>/dev/null 2>&1
+	LD_LIBRARY_PATH=$SYSTEMLIB /system/toolbox ln -s $1 $2      >/dev/null 2>&1
+	LD_LIBRARY_PATH=$SYSTEMLIB /system/bin/toolbox ln -s $1 $2	>/dev/null 2>&1
+	ln -s $1 $2                                                 >/dev/null 2>&1
+	ch_con $2                                                   >/dev/null 2>&1
+}
+
+###### ASLIB.SUB.SET_SYSTEM_FP
+set_system_fp() {
+	$LT4 "D: ASLIB exec set_system_fp"
+	[[ "$(echo ${1} | cut -d / -f 2-2)" != "system" ]] && {
+		$LT2 "E: ASLIB set_system_fp: not valid system file input $1"
+		$LT3 "W: ASLIB set_system_fp: only system files with full path are accepted"
+	}
+	
+	local _sys="$(echo ${1} | cut -d / -f 3-3)"
+	
+	case $_sys in
+		bin|xbin)
+			set_perm 0 2000 0755 $1
+			chmod +x $1
+		;;
+		vendor)
+			local _sysv="$(echo ${1} | cut -d / -f 4-4)"
+			case $_sysv in
+				bin|xbin)
+				set_perm 0 2000 0755 $1
+				chmod +x $1
+				;;
+				*)
+				set_perm 0 0 0655 $1
+				;;
+			esac
+		;;
+		*)
+			set_perm 0 0 0655 $1
+		;;
+	esac
+}

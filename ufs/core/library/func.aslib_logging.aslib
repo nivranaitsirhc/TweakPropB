@@ -1,0 +1,195 @@
+#!/sbin/sh
+#
+# aslib library
+#
+
+
+##### ASLIB.ALINIT
+alLInit() {
+	is_enabled al_init && {
+		cold_log "W: ASLIB alLInit: aslib logging has already been initialized!"
+		return 1
+	}
+	
+	# remount /sdcard if not mounted
+	! is_mounted /sdcard rw && \
+	remount_mountpoint /sdcard rw
+	
+
+	# create log directory
+	[ ! -z "$aslib_log_type" ] && {
+		case $aslib_log_type in
+			flash|flashmode|flashlog)
+				logpath=$aslib_logpath/flash
+			;;
+			upgrade|upgrademode|upgradelog|ota)
+				logpath=$aslib_logpath/ota
+			;;
+			custom)
+				logpath=$aslib_logpath/custom
+			;;
+			*)	
+				logpath=$aslib_logpath/$aslib_log_type
+				cold_log "D: ASLIB Custom logtype set, $aslib_log_type"
+			;;
+		esac
+		# create required folder
+		[ ! -e $logpath ] && {
+			$cold_log "I: ASLIB alLInit: creating $logpath"
+			install -d $logpath
+			[ ! -e $logpath ] && $cold_log "I: ASLIB alLInit: FAILED in creating DIR"
+		}
+		$cold_log "I: ASLIB alLInit: logpath set to $logpath"
+	}
+	
+	# Set log name
+	[ -n "$aslib_log_logname" ] && {
+		$cold_log "I: ASLIB alLinit: logname set to $aslib_log_logname"
+		al_name=$aslib_log_logname
+	} || {
+		$cold_log "W: ASLIB alLinit: alLinit run without defining aslib_log_name, defualting to aslog"
+		al_name=aslog
+	}
+	
+	# Setup log file name
+	logfile=$logpath/$al_name'_'$(date "+%Y-%m-%d_%H-%M-%S").log
+	$cold_log "I: ASLIB alLInit: logfile set to $logfile"
+	
+	if [ -e $logfile ]; then
+		$cold_log "W: ASLIB alLInit: found existing logfile with the same name, the world must be crazy!"
+		$cold_log "D: ASLIB alLInit: removing duplicate logfile.."
+		rm -f $logfile
+	fi
+	
+	# COLD_LOG TURN-OVER
+	local PRO_LOG="$TMP_LOG"                # TRANSFER LOGS TO PROBITIONARY CONTAINER
+	TMP_LOG=                                # CLEAR TMP_LOG
+	alLog "I: LOADING COLD_LOGS..$PRO_LOG"  # FLUSH COLD_LOGS to ASLIB LOG
+	cold_log=alLog                          # TRANSITION COLD_LOG TO ALLOG
+	PRO_LOG=                                # CLEAR PROBITIONARY CONTAINER
+	
+	al_init=1
+}
+
+##### ASLIB.ALSET
+alLSet() {
+	[ -z "$1" ] && {
+		# detect inputs
+		case $al_enable in
+		1|1|enable) al_enable=1
+			$cold_log "I: ASLIB alLSet: log enabled"
+			;;
+		0|0|disable) al_enable=0
+			$cold_log "I: ASLIB alLSet: log disabled"
+			;;
+		esac
+	}
+
+	[ "$1" == "name" ] && {
+		al_name=$2
+		$cold_log "I: ASLIB allSet: logname set to $2"
+	}
+
+	[ "$1" == "enable" ] && {
+		case $2 in
+		True|true|1)
+			al_enable=1
+			$cold_log "I: ASLIB alLSet: log enabled"
+			;;
+		False|false|0)
+			al_enable=0
+			$cold_log "I: ASLIB alLSet: log disabled"
+			;;
+		esac
+	}
+
+	[ "$1" == "type" ] && {
+		case $2 in
+			flash|flashlogs|flashmode)
+				$cold_log "I: ASLIB alLSet: type set to $2"
+				aslib_log_type=flash
+				;;
+			up|upgrade|upgrademode)
+				$cold_log "I: ASLIB alLSet: type set to $2"
+				aslib_log_type=upgrade
+				;;
+			*)
+				$cold_log "I: ASLIB alLSet: type set to $2"
+				aslib_log_type=$2
+				;;
+		esac
+
+		# we need to call alLInit again
+		# alLInit
+	}
+
+	[ "$1" == "level" ] && {
+		case $2 in
+			1)	LT1=alLog
+				LT2=alLog
+				LT3=alLog
+				LT4=cold_log
+				$cold_log "I: ASLIB alLSet: log set to 1"
+			;;
+			2)	LT1=alLog
+				LT2=cold_log
+				LT3=cold_log
+				LT4=cold_log
+			   	$cold_log "I: ASLIB alLSet: log set to 2"
+			;;
+			3)	LT1=alLog
+				LT2=alLog
+			  	LT3=alLog
+				LT4=cold_log
+				$cold_log "I: ASLIB alLSet: log set to 3"
+			;;
+			4)	LT1=alLog
+			  	LT2=alLog
+				LT3=alLog
+				LT4=alLog
+				flush_logs=false
+				$cold_log "I: ASLIB alLSet: log set to 4"
+			;;
+			*)	LT1=alLog
+				LT2=alLog
+				LT3=alLog
+				LT4=cold_log
+				$cold_log "I: ASLIB alLSet: log set to 1 DEFAULT"
+			;;
+		esac
+	}
+	return 0
+}
+
+##### ASLIB.ALLOG
+alLog() {
+	[ "$al_enable" != 1 ] && return 0
+
+	[ -n "$1" ] && IN="$*" || read IN
+
+	[ -n "$IN" ] && {
+		LogTime=`date "+%H:%M:%S"`
+		echo 	"$LogTime $IN" >> $logfile
+		cold_log "$IN"
+	}
+}
+
+
+##### ASLIB.FLUSH_LOGS
+flush_logs() {
+	is_enabled flush_logs || {
+		$LT1 "I: ASLIB flush_logs: Complete log flushing is disabled "
+		return 0
+	}
+	
+	UFSTL="/sdcard/logs/ufs/ufs_log_$al_name.log"
+	$LT1 "I: ASLIB flush_logs: Flushing complete logs to $UFSTL"
+	remount_mountpoint /sdcard rw || $LT1 "E: ASLIB flush_logs: no sdcard access"
+	cold_log "DONE FLUSHING.."
+	echo "uniFlashScript Flush Logs"$'\n\n\n\n' >> $UFSTL
+	echo "FLUSHING COLD_LOGS....$TMP_LOG"       >> $UFSTL
+	echo $'\n\n\n\n'                            >> $UFSTL
+	$LT1 "I: ASLIB flush_logs: done"
+	# copy recovery.log to ufs dir
+	(sleep 2;cat /tmp/recovery.log > /sdcard/logs/ufs/$al_name"_recovery.log") &
+}

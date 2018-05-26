@@ -1,0 +1,41 @@
+#!/sbin/sh
+#
+# aslib library
+#
+
+##### ASLIB.SUB.IS_MOUNTED
+is_mounted() {
+	$LT4 "D: ASLIB exec is_mounted with $1 $2"
+	[ -n "$2" ] && {
+		cat /proc/mounts | grep $1 | grep $2, >/dev/null 2>&1
+		s=$?
+	} || {
+		cat /proc/mounts | grep $1            >/dev/null 2>&1
+		s=$?
+	}
+	[ "$s" == "0" ] && \
+	$LT4 "D: ASLIB is_mounted: $1 is mounted $2" || \
+	$LT4 "D: ASLIB is_mounted: $1 is not mounted"
+	return $s
+}
+
+###### ASLIB.SUB.IS_ENABLED
+is_enabled() {
+	$LT4 "D: ASLIB exec is_enabled with $1"
+	[ -z "$1" ] && return 1
+	eval ie_t='$'$1
+	case $ie_t in
+		1|enable|true|True|TRUE|ENABLED|ENABLE) 
+			$LT4 "I: ASLIB is_enabled: ENABLED, by $1 set to $ie_t"
+			s=0
+		;;
+		0|disable|false|False|FALSE|DISABLED|DISABLE|' ')
+			$LT4 "I: ASLIB is_enabled: DISABLED, by $1 set to $ie_t"
+			s=1
+		;;
+		*) 	$LT4 "E: ASLIB is_enabled: unknown state of $1 set to $ie_t, returning 1"
+			s=1
+		;;
+	esac
+	return $s
+}

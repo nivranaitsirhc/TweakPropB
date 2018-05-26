@@ -1,0 +1,228 @@
+#!/sbin/sh
+#
+# aslib library
+#
+
+##### ASLIB.BASIC.WIPE_LIST
+asWipelist() {
+	$LT1 "I: ASLIB exec asWipelist"
+	is_enabled aslib_asWipelist || {
+		ui_print "W: asWipelist is DISABLED"
+		return 0
+	}
+
+	# create wipe list
+	create_wipelist;
+	
+	[ -z "$wipe_list" ] && {
+		$LT2 "E: ASLIB asWipelist: wipe_list var is null, maybe create_wipelist failed?"
+		return 1
+	} || {
+		for WIPE in $wipe_list; do
+			wipe_system_file "$WIPE"
+		done
+	}
+}
+
+##### ASLIB.BASIC.ASADDON
+asAddon() {
+	$LT1 "I: ASLIB exec asAddon"
+	is_enabled aslib_asAddon || {
+		ui_print "W: asAddon is DISABLED"
+		return 0
+	}
+	
+	local ERR_STAT=0
+	# Check addon tail def. and redef. addon_tail
+	if [[ -n "$addon_tail" && -e "$COREDIR/install/$addon_tail" ]]; then
+		$LT2 "I: ASLIB asAddon: using install/$addon_tail"
+		addon_tail="$COREDIR/install/$addon_tail"
+    elif [[ -n "$addon_tail" && -e "$COREDIR/$addon_tail" ]]; then
+		$LT2 "I: ASLIB asAddon: using defined addon_tail in CORE."
+		addon_tail="$COREDIR/$addon_tail"
+	elif [[ -z "$addon_tail" && -e "$COREDIR/addon_tail.sh" ]]; then
+		$LT2 "W: ASLIB asAddon: addon_tail is not defined. Using default addon_tail.sh"
+		addon_tail="$COREDIR/addon_tail.sh"
+	else
+		$LT2 "E: ASLIB asAddon: missing addon_tail !"
+		ERR_STAT=$((++ERR_STAT))
+	fi
+
+	# check flashmode
+	[ $aub = "0" ] && {
+		$LT2 "E: ASLIB asAddon: This function should be run in flashmode"
+		ERR_STAT=$((++ERR_STAT));
+	}
+
+	# check file_list & wipe_list
+	[[ -z "wipe_list" && -z "file_list" ]] && {
+		$LT2 "W: ASLIB asAddon: empty list"
+		ERR_STAT=$((++ERR_STAT));
+	}
+
+	# check if essentials are defined
+	[[ -z "$addon_name" || -z "$uFS_src_ver" || -z "$uFS_rev_ver" ]] && {
+		$LT2 "W: ASLIB asAddon: Missing Essential Variables"
+		$LT3 "D: ASLIB asAddon: addon_name  -> $addon_name"
+		$LT3 "D: ASLIB asAddon: uFS_rev_ver -> $uFS_rev_ver"
+		$LT3 "D: ASLIB asAddon: uFS_src_ver -> $uFS_src_ver"
+		ERR_STAT=$((++ERR_STAT));
+	}
+
+	[ "$ERR_STAT" -gt "0" ] && {
+		ui_print "W: Cannot create addon due to errors!"
+		return 0
+	}
+
+	# set the addon delay
+	[ -z "$1" ] && {
+		[ ! -z "$addon_delay" ] && {
+			ind=90
+			$LT2 "W: ASLIB asAddon empty ind; setting to default $ind"
+		} || {
+			ind=$addon_delay
+			$LT2 "I: ASLIB asAddon: using user defined addon_delay -> $addon_delay"
+		}
+	} || {
+		ind=$1
+		$LT2 "I: ASLIB asAddon: setting addon_delay to -> $ind"
+	}
+
+	# def. generated addon file name
+	addon_filename="$ind-$addon_name.sh";
+	
+	# fix file_list
+	file_list=$(echo "${file_list}" | sort -ur  | sed '/^$/d')
+
+	# sed file_list to addon_tail
+	$LT2 "I: ASLIB asAddon: injecting install list to $addon_tail"
+	for _file_list in $file_list; do
+		sed -i "\:cat <<EOF:a$_file_list" $addon_tail
+		$LT3 "D: ASLIB asAddon: <- $_file_list"
+	done
+	
+	# fix wipe_list
+	wipe_list=$(echo "${wipe_list}" | sort -ur | sed '/^$/d')
+	
+	# sed the wipelist to addon_tail
+	$LT2 "I: ASLIB asAddon: injecting wipe list to $addon_tail"
+	for _wipe_file in $wipe_list; do
+		sed -i "\:wipe_list=:a$_wipe_file" $addon_tail
+		$LT3 "D: ASLIB asAddon: <- $_wipe_file"
+	done
+
+	# set addon properties
+	$LT2 "I: ASLIB asAddon: setting variables to $addon_tail"
+	set_file_prop $addon_tail addon_name    $addon_name
+	set_file_prop $addon_tail addon_src_ver $uFS_src_ver
+	set_file_prop $addon_tail addon_app_rev $uFS_rev_ver
+
+	# clean-up same name addon.d script
+	if [ -e /system/addon.d/$addon_filename ]; then
+		$LT3 "D: ASLIB asAddon: removing existing addon script."
+		rm -rf /system/addon.d/$addon_filename
+	fi
+
+	# create the addon file
+	$LT1 "I: ASLIB asAddon: creating and installing $addon_filename"
+	install -d /system/addon.d;
+	cat $addon_tail >   /system/addon.d/$addon_filename;
+
+	# set permission for addon.d script
+	$LT1 "I: ASLIB asAddon: setting permissions for $addon_filename"
+	set_perm 0 0 0755 /system/addon.d/$addon_filename
+}
+
+##### ASLIB.BASIC.ASEXTRACT
+asExtract() {
+	$LT1 "I: ASLIB exec asExtract"
+	is_enabled aslib_asExtract || {
+		ui_print "W: asExtract: is DISABLED"
+		return 0
+	}
+	
+
+	# def check
+	def_check;
+
+	# def. the essential directories if not def.
+	if [ ! -e "$SOURCEDIR" ]; then
+		$LT2 "I: ASLIB asExtract: CREATING DIR $SOURCEDIR"
+		mkdir $SOURCEDIR;
+	fi
+
+	# extracting system
+	$LT1 "I: ASLIB asExtract: EXTRACTING SYSTEM SOURCEDIR"
+	$LT3 "D: ASLIB asExtract: ZIP FILE       -> $ZIP"
+	$LT3 "D: ASLIB asExtract: EXTRACT TARGET -> system/*"
+	$LT3 "D: ASLIB asExtract: EXTRACT TO     -> $SOURCEDIR"
+
+	$LT1 "I: ASLIB asExtract: extracting system files"
+	extract_zip "$ZIP" "system/*" "$SOURCEDIR" || { ui_print "E: Error occured during zip extraction."; abort $E_ZEF; }
+
+	[ -e $SOURCESYS ] && {
+		$LT2 "I: ASLIB asExtract: SOURCESYS successfully created"
+	} || {
+		$LT2 "I: ASLIB asExtract: DISABLING asInstall"
+		aslib_asInstall=0
+	}
+}
+
+##### ASLIB.BASIC.ASINSTALL
+asInstall() {
+	$LT1 "I: ASLIB exec asInstall"
+	is_enabled aslib_asInstall || {
+		ui_print "W: asInstall: is DISABLED"
+		return 0
+	}
+
+	# DEF_CHECK
+	def_check || {
+		$LT1 "I: ASLIB asInstall: ERROR in required ESSENTIAL DIRECTORIES, Please run pre_check() and asExtract() first"
+		return 1
+	}
+
+	# recheck system mountpoints
+	! is_mounted /system rw && {
+		ui_print "E: ASLIB asInstall: /system not mounted properly"
+		exit 1
+	}
+
+	# var. def.
+	file_list=;ops_count=0;progress=0;
+	progress 0 0;
+
+	# prepare count for fancy progress
+	for dummy in $(find $SOURCESYS); do
+		ops_count=$((++ops_count));
+	done
+
+	ops_arbiter=$(awk "BEGIN {printf \"%.5f\",1/$ops_count}")
+	
+	# install files
+	for TARGET in $(find $SOURCESYS | sort); do
+		progress=$(awk "BEGIN {printf \"%.5f\",$progress + $ops_arbiter}")
+		progress $progress 1
+		FILE=/system${TARGET#$SOURCESYS}
+		if [ -d "$TARGET" ] ;then
+			_new_install="$(echo "$FILE" | cut -d/ -f 3-4)"
+			[ "$_new_install" != "$_old_install" ] && {
+				$LT2 "I: ASLIB asInstall <- $_new_install"
+				_old_install="$_new_install"
+			}
+			[ ! -e $FILE ] && {
+					install -d $FILE || $LT4 "E: ASLIB asInstall: Failed to create $FILE" && \
+					set_perm 0 0 0755 "$FILE"
+			}
+		else
+			dd if="$TARGET" of="$FILE"
+			[ ! -e "$FILE" ] && { $LT3 "E: ASLIB asInstall: Failed to install $FILE"; } || {
+				file_list="${file_list}${FILE#/system/}"$'\n';
+				set_system_fp "$FILE"
+			}
+		fi
+	done
+	progress 1 1
+	sleep 3
+}
+

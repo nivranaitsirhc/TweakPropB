@@ -1,0 +1,201 @@
+#!/sbin/sh
+#
+#   uniFlashScript
+#
+#   CodRLabworks
+#   CodRCA : Christian Arvin
+#
+
+#
+#	Collection of General Function useful in recovery
+# 
+#   NOTE:
+#	 This script is dedicated for uniFlashScript installer.sh
+#	
+#
+
+# PRE-INIT
+# ___________________________________________________________________________________________________________ <- 110 Char
+#
+
+export aslib_version=1000
+export aslib_funcbasic="ui_print set_perm set_progress progress get_prop set_file_prop";
+export aslib_funcmain="asAddon asExtract asInstall asWipelist"
+export aslib_funcadvance="alLog alLSet alLInit def_check def_config_check";
+export aslib_logpath=/sdcard/logs/ufs
+
+
+# VARIABLE CONFIGS
+# ___________________________________________________________________________________________________________ <- 110 Char
+#
+#
+
+# ############################ # This Configs are essential for aslib function operations.
+#     CONFIG DEFINATION        # You can create your config file and source it and use the defs found here.
+# ############################ # but you need to run the def_config_check() as precaution for invalid configs
+
+# ASLIB CONFIG
+export aslib_req=1000;                  # alib required version
+export aslib_asWipelist=1               # set to zero to disable wipe function
+export aslib_asAddon=1                  # set to zero to disable addon function
+export aslib_asInstall=1                # set to zero to disable install function
+export aslib_asExtract=1                # set to zero to disable extract function
+
+# ASLIB LOG CONFIGS
+export aslib_log_type="flash"           # set to flash or update
+export aslib_log_level=3                # set the logging level
+export aslib_log_enabled=1              # set to zero to disable aslib Loggin function
+export aslib_log_logname="aslog"        # default log name
+
+# ASLIB ADDON CONFIGS
+export addon_name="uniFlashScript"      # default addon name
+export addon_delay=50                   # default addon delay
+export addon_tail="addon_tail.sh"       # default addon template name
+
+# ASLIB PRE_CHECK CONFIGS
+export init_pre_check=0;                # ! ESSENTIAL VALUE DO NOT MODIFY !
+export init_create_wipelist=0;          # ! ESSENTIAL VALUE DO NOT MODIFY !
+
+export pc_calc_zip_buffer=5             # zip buffer size
+export pc_calc_sys_buffer=500           # system buffer
+export pc_size_fix=353600;              # fix minimum size requirement if pc_size_zip is undetermined
+export pc_totl_sys=0                    # autogen : total system size
+export pc_size_zip=0                    # autogen : zip size
+export pc_size_min=0                    # autogen : minimum size limit
+export pc_free_tmp=0                    # autogen : size of /tmp
+export pc_free_sd0=0                    # autogen : size of /sdcard
+export pc_free_sd1=0                    # autogen : size of /sdcard1
+export pc_free_sys=0                    # autogen : /system free space
+export pc_stat_sys=0                    # autogen : 0 if system has no errors
+export pc_stat_sd0=0                    # autogen : 0 if sdcard has no errors
+export pc_stat_sd1=0                    # autogen : 0 if sdcard1 has no errors
+export pc_stat_tmp=0                    # autogen : 0 if tmp has no errors
+
+
+# VARIABLE DECLARATION  # ! ESSENTIAL VALUE DO NOT MODIFY !	
+# ___________________________________________________________________________________________________________ <- 110 Char
+#
+#
+
+export wipe_list=
+export file_list=
+
+export SOURCEDIR=
+export SOURCEFS=
+export SOURCESYS=                       
+
+
+# ASLIB COLD_LOG CONFIGS
+export flush_logs=1
+export cold_log=cold_log
+
+# ASLIB GET_PROP CONFIGS
+PROPFILES="/system/default.prop /system/build.prop /data/local.prop /default.prop /build.prop"
+
+# ASLIB DEF_CONFIG_CHECK
+loc_of_config=                   # MUST BE DEFINED BY INSTALLER SH or def_config_check() will be disabled
+loc_of_aslib=                    # MUST BE DEFINED BY INSTALLER SH or def_config_check() will be disabled
+
+# ASLIB PRINT_HEADER
+export TMH0=;
+export TMH1="aslib config"
+export TMH2="*******************************"
+export TMH3="       ASLIB PRINT HEADER"
+export TMH4="*******************************"
+export TMH5="app: aslib"
+export TMH6="src: TEST"
+export TMH7="rev: TEST"
+export TMH8=;
+
+# list of configs check
+export def_config_list="
+aslib_req
+aslib_asWipelist
+aslib_asAddon
+aslib_asInstall
+aslib_asExtract
+aslib_log_type
+aslib_log_level
+aslib_log_enabled
+aslib_log_logname
+addon_name
+addon_delay
+addon_tail
+pc_calc_zip_buffer
+pc_calc_sys_buffer
+pc_size_fix
+PROPFILES
+"
+
+# ! DEFCHECK CONFIG SPECIFIC SETTING DO NOT MODIFY OR REMOVE!
+last_config_loaded=aslib_config
+
+# !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! # For aslib logging to function properly this config are needed
+#    Do not modify this variables      # to be set properly right after aslib has been sourced.
+# !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! # You can config each value on your script after aslib has been loaded.
+
+# CRUCIAL CONFIGS FOR ALLOG
+export LT1=cold_log	# ! DO NOT MODITY ! Logging Tag-1 cold_log means disabled
+export LT2=cold_log	# ! DO NOT MODITY ! Logging Tag-2 cold_log means disabled
+export LT3=cold_log	# ! DO NOT MODITY ! Logging Tag-3 cold_log means disabled
+export LT4=cold_log	# ! DO NOT MODITY ! Logging Tag-4 cold_log means disabled
+
+
+
+[ -z "$aslib_log_enabled" ] && al_enable=1                   || al_enable=$aslib_log_enabled
+[ -z "$aslib_log_type"    ] && aslib_log_type=flash          || aslib_log_type=$aslib_log_type
+[ -z "$aslib_log_level"   ] && al_level=1                    || al_level=$aslib_log_level
+[ -z "$aslib_log_logname" ] && aslib_log_logname="aslib_log" || aslib_log_logname=$aslib_log_logname
+[ -z "$al_init" ] && al_init=0
+
+
+
+
+
+# FUNCTIONS
+# ___________________________________________________________________________________________________________ <- 110 Char
+#
+
+##### ASLIB.COLD_LOG
+cold_log() {
+		TMP_LOG="${TMP_LOG}"$'\n'"$(date "+%H:%M:%S") $1"
+		printf "$1\n"
+}
+
+cold_log=cold_log
+[ -z "$TMP_LOG" ] && TMP_LOG="TMP_LOG INIT BY ASLIB"
+
+# PRE_INIT
+# ___________________________________________________________________________________________________________ <- 110 Char
+#
+
+# VERIFY LIBRARIES
+[ -z "$LIBS" ] && {
+	LIBS=$(dirname $0)
+}
+
+# LOAD ALL FUNCTIONS
+cold_log "I: ASLIB LOADING LIBRARIES"
+for func in $(ls $LIBS/func.*.aslib);do
+	(eval . $func) && \
+	. $func && \
+	cold_log "I: ASLIB LOADED $func" || \
+	cold_log "E: FUNCTION UNLOADABLE"
+done
+
+# INIT
+# ___________________________________________________________________________________________________________ <- 110 Char
+#
+
+# update_binary var check -AslibUpdateBinary- or aub
+# SOURCEDIR, BINARIES, INSTALLER, ZIP
+[[ -z "$SOURCEDIR" && -z "$BINARIES" && -z "$INSTALLER" && -z "$ZIP" ]] && {
+	$cold_log "I: ASLIB Were probably running in ota_mode"
+	aub=0
+} || {
+	$cold_log "I: ASLIB Were probably running in flash_mode"
+	aub=1
+}
+
+##### INFORM USER THAT ASLIB IS LOADED
+$cold_log "I: ASLIB aslib Loaded.."

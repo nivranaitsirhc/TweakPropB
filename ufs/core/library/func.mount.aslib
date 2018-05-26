@@ -1,0 +1,90 @@
+#!/sbin/sh
+#
+# aslib library
+#
+
+##### ASLIB.SUB.TOOLBOX_MOUNT
+toolbox_mount() {
+	$LT4 "D: ASLIB exec toolbox_mount $1 $2"
+	# default to READ_WRITE
+	local RW=rw
+	[ ! -z "$2" ] && RW=$2
+	
+	$LT4 "D: ASLIB toolbox_mount: mounting using using /etc/fstab entry"
+
+	local DEV=;
+	local POINT=;
+	local FS=;
+	
+	for i in `cat /etc/fstab | grep "$1"`; do
+		if [ -z "$DEV" ]; then
+			DEV=$i
+		elif [ -z "$POINT" ]; then
+			POINT=$i
+		elif [ -z "$FS" ]; then
+			  FS=$i
+			break
+		fi
+	done
+	
+	$LT4 "D: ASLIB toolbox_mount: exec mount -t $FS -o $RW $DEV $POINT"
+	! mount -t $FS -o $RW $DEV $POINT               >/dev/null 2>&1 && \
+	$LT4 "D: ASLIB toolbox_mount: exec mount -t $FS -o $RW,remount $DEV $POINT" && \
+	! mount -t $FS -o $RW,remount $DEV $POINT       >/dev/null 2>&1 || return 0
+	
+	
+	$LT4 "D: ASLIB toolbox_mount: mounting using using /etc/recovery.fstab"
+	
+	DEV=;POINT=;FS=;
+	
+	for i in `cat /etc/recovery.fstab | grep "$1"`; do
+		if [ -z "$POINT" ]; then
+			POINT=$i
+		elif [ -z "$FS" ]; then
+			FS=$i
+		elif [ -z "$DEV" ]; then
+			DEV=$i
+			break
+		fi
+	done
+	
+	if [ "$FS" = "emmc" ]; then
+		$LT4 "D: ASLIB toolbox_mount: exec mount -t ext4 -o $RW $DEV $POINT"
+		! mount -t ext4 -o $RW $DEV $POINT            >/dev/null 2>&1 && \
+		$LT4 "D: ASLIB toolbox_mount: exec mount -t ext4 -o $RW,remount $DEV $POINT" && \
+		! mount -t ext4 -o $RW,remount $DEV $POINT    >/dev/null 2>&1 && \
+		$LT4 "D: ASLIB toolbox_mount: exec mount -t f2fs -o $RW $DEV $POINT" && \
+		! mount -t f2fs -o $RW $DEV $POINT            >/dev/null 2>&1 && \
+		$LT4 "D: ASLIB toolbox_mount: exec mount -t f2fs -o $RW,remount $DEV $POINT" && \
+		! mount -t f2fs -o $RW,remount $DEV $POINT    >/dev/null 2>&1 || return 0
+	else
+		$LT4 "D: ASLIB toolbox_mount: exec mount -t $FS -o $RW $DEV $POINT"
+		! mount -t $FS -o $RW $DEV $POINT             >/dev/null 2>&1 && \
+		$LT4 "D: ASLIB toolbox_mount: exec mount -t $FS -o $RW,remount $DEV $POINT" && \
+		! mount -t $FS -o $RW,remount $DEV $POINT     >/dev/null 2>&1 || return 0
+	fi
+	return 1 # FAILED TO MOUNT
+}
+
+
+##### ASLIB.SUB.REMOUNT_MOUNTPOINT
+remount_mountpoint() {
+	$LT4 "D: ASLIB exec remount_mountpoint"
+	[ -n "$*" ] && {
+		! is_mounted $1 $2 && \
+		$LT4 "D: ASLIB remount_mountpoint: exec mount -o $2,remount $1" && \
+		! mount -o $2,remount $1    >/dev/null 2>&1 && \
+		$LT4 "D: ASLIB remount_mountpoint: exec mount -o $2,remount $1 $1" && \
+		! mount -o $2,remount $1 $1 >/dev/null 2>&1 && \
+		$LT4 "D: ASLIB remount_mountpoint: exec toolbox_mount $1" && \
+		! toolbox_mount $1          >/dev/null 2>&1 && \
+		{
+			$LT3 "I: ASLIB remount_mountpoint: $1 failed to remount"
+			stat=1
+		} || {
+			$LT3 "I: ASLIB remount_mountpoint: $1 remounted successfully"
+			stat=0
+		}
+		return $stat
+	}
+}

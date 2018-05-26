@@ -1,0 +1,86 @@
+#!/sbin/sh
+#
+# uFS user variables
+#
+
+# ENABLE INSTALLER.SH AUTOFUNCTIONS
+# ------------------------------------------------------------------------ #
+
+# Enable Auto System Install
+extract_system=1
+install_system=1
+
+# Check System Free Space
+calculatespace=1
+
+# Enable free system space checking
+create_addon_d=1
+
+# Enable wiping of system file from user wipe.list inside install folder
+exec_wipe_list=1
+
+# Enable user folder extraction
+extract_folder=0
+
+# Define user folders
+user_folders=    
+
+# INSTALLER SH CONFIGS
+# ------------------------------------------------------------------------ #
+
+# 0 - disable
+# 1 - sdk must be equal to required sdk
+# 2 - sdk must be less than equal than required max sdk
+# 3 - sdk must be greater tha equal to required min sdk
+req_force=0;
+
+# Required sdk
+req_android_sdk=25;
+
+# Required min sdk
+req_android_sdk_min=25;
+
+# Required max sdk
+req_android_sdk_max=25;
+
+# Required Device Name, leave blank to disable
+req_device=;
+
+# Auto mount {system,sdcard,data,tmp} or leave blank to disable
+mountpoints="system sdcard"
+
+# UFS CONFIGS
+# ------------------------------------------------------------------------ #
+
+# Name of Script
+uFS_name="user_test"
+
+# Version of Script
+uFS_src_ver="u_test_1"
+
+# Revision of Script
+uFS_rev_ver="u_test_2"
+
+# ADDON CONFIG
+# ------------------------------------------------------------------------ #
+
+# Generated addon name
+addon_name="user_addon"
+
+# Addon filename delay
+addon_delay=99
+
+# DISABLE DEFAULT HEADER PRINT
+print_header_enabled=1
+
+# ASLIB LOG NAME
+aslib_log_logname=user
+
+# ASLIB LOG TYPE
+aslib_log_type="user"
+
+# END OF CONFIG
+# ------------------------------------------------------------------------ #
+# ! DEFCHECK CONFIG SPECIFIC SETTING DO NOT MODIFY OR REMOVE!
+last_config_loaded=user_config
+# END OF FILE

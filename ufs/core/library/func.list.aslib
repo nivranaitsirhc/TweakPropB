@@ -1,0 +1,47 @@
+#!/sbin/sh
+#
+# aslib library
+#
+
+##### ASLIB.SUB.CREATE_WIPELIST
+create_wipelist() {
+	$LT4 "D: ASLIB exec create_wipelist"
+	is_enabled init_create_wipelist && {
+		$LT2 "I: ASLIB create_wipelist: not allowed to run twice"
+		return 0
+	}
+
+	[ ! -z "$wipe_list" ] && {
+		$LT2 "W: ASLIB create_wipelist: wipe_list non-zero value"
+		$LT3 "D: displaying wipe_list values ..\n$wipe_list"
+		$LT3 "D: clearing values.."
+		wipe_list=
+	}
+
+	$LT3 "I: ASLIB create_wipelist: parsing wipe_list from $COREDIR"
+
+	ls $COREDIR/config/wipe_*.list >/dev/null 2>&1  && {
+		for WIPE_TARGET in $(ls -1 $COREDIR/config/wipe_*.list); do
+			( test -s "$WIPE_TARGET" ) && {
+				for FILE_TARGET in $(cat $WIPE_TARGET); do
+					wipe_list="${wipe_list}$FILE_TARGET"$'\n'       # Store to wipe_list for addon.d script
+				done
+			} || $LT2 "I: ASLIB create_wipelist: $WIPE_TARGET skipped, Empty"
+		done
+	} || $LT3 "W: ASLIB create_wipelist: $COREDIR/config has no wipe list"
+
+	ls $COREDIR/install/wipe_*.list >/dev/null 2>&1 && {
+		for WIPE_TARGET in $(ls -1 $COREDIR/install/wipe_*.list); do
+			( test -s "$WIPE_TARGET" ) && {
+				for FILE_TARGET in $(cat $WIPE_TARGET); do
+					wipe_list="${wipe_list}$FILE_TARGET"$'\n'       # Store to wipe_list for addon.d script
+				done
+			} || $LT2 "I: ASLIB create_wipelist: $WIPE_TARGET skipped, Empty"
+		done
+	} || $LT3 "W: ASLIB create_wipelist: $COREDIR/install has no wipe list"
+
+	$LT3 "I: ASLIB create_wipelist: fixing wipe_list"
+	wipe_list=$(echo "${wipe_list}" | sort -u | sed '/^$/d')
+
+	init_create_wipelist=1
+}

@@ -1,0 +1,62 @@
+#!/sbin/sh
+#
+# aslib library
+#
+
+##### ASLIB.SUB.WIPE_SYSTEM_FILES
+wipe_system_file() {
+	$LT4 "D: ASLIB exec wipe_system_file"
+	# Added    08:43 08/05/2017
+	# Modified 10:20 04/14/2018 - made target specific
+	# Delete files inside the target folder
+	if [ -e "/system/$1" ]; then
+		# determine type
+		if [ -d "/system/$1" ]; then
+			# delete recursively
+			$LT3 "I: ASLIB wipe_system_file: wiping folder -> $1"
+			rm -fR "/system/$1"
+		elif [ -f "/system/$1" ]; then
+			# delete file
+			$LT3 "I: ASLIB wipe_system_file: wiping file   -> $1"
+			rm -f "/system/$1"
+		fi
+		# double checked if removed
+		[ -e "/system/$1" ] && {
+			$LT3 "I: ASLIB wipe_system_file: Failed to wipe"
+		}
+	else
+		$LT3 "I: ASLIB wipe_system_file: skipping file -> $1"
+	fi
+}
+
+
+
+##### ASLIB.SUB.EXTRACT_ZIP
+extract_zip() {
+	$LT4 "D: ASLIB exec extract_zip"
+	[[ -z "$1" || -z "$2" || -z "$3" ]] && {
+		$LT1 "E: ASLIB extract_zip: Missing input!"
+		$LT3 "D: ASLIB extract_zip: S1 -> $1"
+		$LT3 "D: ASLIB extract_zip: S2 -> $2"
+		$LT3 "D: ASLIB extract_zip: S3 -> $3"
+		return 25
+	}
+	progress 0 0;
+	unzip -o "$1" "$2" -d "$3" || $LT2 "E: ASLIB extract_zip: errors during extraction"
+	# | while read DUMMY
+	# do
+		# $LT3 "D: ASLIB extract_zip: $DUMMY"
+		# EE=$(($EE+15))
+		# if [ "$EE" -gt "100" ];then
+			# EE=0
+			# progress 0 1
+		# else			
+			# progress 0.$EE 0.1
+		# fi
+	# done
+	progress 1 1
+	[ ! -e "$3" ] && {
+		$LT1 "E: ASLIB extract_zip: unable to extract zip"
+		return 1
+	} || return 0
+}

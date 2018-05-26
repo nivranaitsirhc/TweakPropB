@@ -1,0 +1,75 @@
+#!/sbin/sh
+#
+# uFS default variables
+#
+
+# !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+# ! DO NOT MODIFY THIS VARIABLES USE THE CONFIG FILE IN THE INSTALL FOLDER !
+# !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+# INSTALLER.SH CONFIGS
+# ------------------------------------------------------------------------ #
+create_addon_d=1                 # Tells installer sh to execute addon_d script install
+calculatespace=1                 # Tells installer sh to run space calculation
+exec_wipe_list=1                 # Tells installer sh to execute the wiping of files inside your wipe list
+extract_system=1                 # Tells installer sh to extract the system folder ! NOTE: Install will be disabled if system folder is empty
+install_system=1                 # Tells installer sh to install the system folder
+extract_folder=0                 # Tells installer sh to extract user folders inside the zip
+user_folders=                    # define your folders here separated by a whitespace
+mountpoints="system sdcard"      # Tells installer sh what to mount
+
+uFS_name="uniFlashScript"       # Name of the Script
+uFS_src_ver="testing"            # Source version
+uFS_rev_ver="retesting"          # Revision
+
+# ASLIB CONFIG
+# ------------------------------------------------------------------------ #
+aslib_req=1000;                  # alib required version
+aslib_asWipelist=1               # set to zero to disable wipe function
+aslib_asAddon=1                  # set to zero to disable addon function
+aslib_asInstall=1                # set to zero to disable install function
+aslib_asExtract=1                # set to zero to disable extract function
+
+# ASLIB LOG CONFIGS
+# ------------------------------------------------------------------------ #
+aslib_log_type="flash"           # set to flash or update
+aslib_log_level=3                # set the logging level
+aslib_log_enabled=1              # set to zero to disable aslib Loggin function
+aslib_log_logname="aslog"        # default log name
+
+# ASLIB ADDON CONFIGS
+# ------------------------------------------------------------------------ #
+addon_name="uniFlashScript"      # default addon name
+addon_delay=50                   # default addon delay
+addon_tail="addon_tail.sh"       # default addon template name
+
+# ASLIB PRE_CHECK CONFIGS
+# ------------------------------------------------------------------------ #
+pc_calc_zip_buffer=5             # zip buffer size
+pc_calc_sys_buffer=500           # system buffer
+pc_size_fix=353600;              # fix minimum size requirement if pc_size_zip is undetermined
+
+# ASLIB PRINT_HEADER
+# ------------------------------------------------------------------------ #
+print_header_enabled=1           # Enable Default Tittle Header
+
+# ASLIB GET_PROP CONFIGS
+# ------------------------------------------------------------------------ #
+PROPFILES="/system/default.prop /system/build.prop /data/local.prop /default.prop /build.prop"
+
+# SAMPLE HEADER 
+TMH0=; # ! NOTE: please ensure that TMH begins and ends in null values !
+TMH1="MAIN ufsconfig"
+TMH2="*******************************"
+TMH3="        uniFlashScript"
+TMH4="*******************************"
+TMH5="app: $uFS_name"
+TMH6="src: $uFS_src_ver"
+TMH7="rev: $uFS_rev_ver"
+TMH8=; # ! NOTE: please ensure that TMH begins and ends in null values !
+
+# END OF CONFIG
+# ------------------------------------------------------------------------ #
+# ! DEFCHECK CONFIG SPECIFIC SETTING DO NOT MODIFY OR REMOVE!
+last_config_loaded=ufs_config
+# END OF FILE

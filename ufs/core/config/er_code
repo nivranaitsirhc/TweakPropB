@@ -1,0 +1,17 @@
+#!/sbin/sh
+# exit codes
+export E_AVM=10;		# Aslib Version Mismatch
+export E_OSC=11;		# OS check ERROR
+export E_SDM=12;		# SDK mismatch
+export E_NME=13;		# Not enough space for zipfile extraction
+export E_ZEF=14;		# Zipfile Extraction Failed
+export E_FRS=15;       # Failed to remove SOURCEDIR
+export E_UMS=16;		# Unable to mount system
+export E_UAS=17;		# Unable to determine SDK
+export E_AAE=18;		# asAddon restriction flashmode only
+export E_ZVU=19;		# asExtract ZIP variable undefined or does not exist
+export E_INE=20;		# asInstall ERROR
+export E_NDM=21;		# no user mountpoints
+export E_SVZ=22;		# zipfile to big for system
+export E_ANL=23;		# aslib is not loadable, check aslib script
+# END OF FILE

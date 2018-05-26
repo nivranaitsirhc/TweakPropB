@@ -1,0 +1,160 @@
+#!/sbin/sh
+#
+#	General META-INF/update-binary template
+#	
+#	CodRLabworks
+#	CodRCA: Christian Arvin Catajoy Cabo
+#	      : C.A.META-INF_update-binary
+#
+#	Description:
+#
+#	 This is a general template for update.zip designed by C.A. for his scripts.
+#	The aim of this script is to have a template for an update zip. eliminating the
+#	need to always modify the update-binary. 1.)If you are going to use my script please
+#	do not remove this header. 2.)You can use it freely as much as you want. 3.)You are
+#	allowed to modify this script. 4.)If modification has caused the whole script
+#	to be unrecognizingly different from my original script, just reference me and this
+#	script on the header.
+#
+#	Dependents
+#		1.) root path must include a core folder.
+#		2.) core folder must have the installer.sh script.
+#		3.) installer.sh script is where your mainscript would be.
+#
+#	Global Folder and File Structures
+#	
+#	META-INF/com/google/android/update-binary	- this script
+#	core/installer.sh							- your script, it will be called by this script
+#	core/library/*								- library files.
+#
+#	Global Variables
+#		This variables are passed to the installer.sh
+#	ZIP		-This is the zip filename location where this script was called.
+#	OUTFD	-The out FD that was pass to this script by the recovery env.
+#	COREDIR	-The location of extracted core files from the zip
+#	LIBS	-The location of library
+#
+
+# Global Variables
+#------------------------------------------------------------------------#
+export OUTFD=$2
+export ZIP=$3
+export COREDIR=/tmp/core
+export BINARIES=/tmp/core/bin
+export LIBS=/tmp/core/library
+export INSTALLER=/tmp/core/installer.sh
+export SYSTEM=/system
+bb=$BINARIES/busybox-arm
+
+# Functions
+# _______________________________________________________________________________________________________
+#
+
+ui_print() {
+	echo -n -e "ui_print $1\n" >> /proc/self/fd/$OUTFD
+	echo -n -e "ui_print\n" >> /proc/self/fd/$OUTFD
+}
+
+cold_log() {
+	TMP_LOG="${TMP_LOG}"$'\n'"COLD LOG $1"
+	printf "$1\n"
+}
+
+abort() {
+	[ "$1" != "0" ] && {
+		install -d /sdcard/logs/ufs
+		ublogs=/sdcard/logs/ufs/ub_recovery.log
+		ui_print "I: UPDATE-BINARY: flushing cold_logs to $ublogs"
+		cat /tmp/recovery.log > $ublogs
+	}
+	exit $1
+}
+
+export cold_log=cold_log
+[ -z "$TMP_LOG" ] && export TMP_LOG="TMP_LOG INIT BY UPDATE-BINARY"
+
+# Pre-Initialization
+# _______________________________________________________________________________________________________
+#
+
+case "$(uname -m)" in 
+	*mip*)
+		{(getprop ro.product.cpu.abilist | grep 64) && \
+		export BINARCH="mips64";} || \
+		export BINARCH="mips"
+		;;
+	*ar*)
+		{(getprop ro.product.cpu.abilist | grep v8) && \
+		export BINARCH="armv8";} || \
+		{(getprop ro.product.cpu.abilist | grep v7) && \
+		export BINARCH="armv7";} || \
+		export BINARCH="arm"
+		;;
+	*86*|*64)
+		export BINARCH="x86_64"
+		;;
+esac
+
+ufsBIN="busybox zip lzmadec xzdec"
+
+eval bb="$BINARIES/busybox-$BINARCH"
+eval l="$BINARIES"
+
+ $cold_log "I: UPDATE-BINARY: BINARCH is $BINARCH"
+ $cold_log "I: UPDATE-BINARY: Busybox set to $bb"
+# Post-Initialization
+# _______________________________________________________________________________________________________
+#
+setenforce 0
+if [ ! -f "/sbin/unzip" ]; then
+	# recovery is unstable
+	ui_print "- BAD RECOVERY DETECTED, NO UNZIP, ABORTING.."
+	exit 1
+fi
+
+if [ -e $COREDIR ];then
+	rm -rf $COREDIR
+fi
+# unzip core
+unzip -o "$ZIP" "core/*" -d "/tmp"
+
+install -d "$BINARIES"
+# Main
+# _______________________________________________________________________________________________________
+#
+
+# chmod binaries
+for bin in $ufsBIN; do
+	[ ! -e "$BINARIES/$bin-$BINARCH" ] && \
+	cold_log "E: UPDATE-BINARY: $bin-$BINARCH does not exist, maybe not supported yet by your arch." || {
+		chmod +x "$BINARIES/$bin-$BINARCH"
+		[[ "$bin" != "busybox" && -e "$BINARIES/$bin-$BINARCH" ]] && {
+		  ! ln -sf "$BINARIES/$bin-$BINARCH" "$BINARIES/$bin" && {
+			  # create script wrapper if symlinking and hardlinking failed because of restrictive selinux policy
+			  ! echo "$BINARIES/$bin-$BINARCH" > "$BINARIES/$bin" || ! chmod +x "$BINARIES/$bin" && {
+				ui_print "ERROR 10: Failed to set-up pre-bundled $bin "
+				ui_print "Please use TWRP as recovery instead"
+				abort 1
+			  }
+		  }
+		}
+	}
+done
+
+[ -e "$bb" ] && {
+  for i in $($bb --list); do
+    ! ln -sf "$bb" "$BINARIES/$i" && ! $bb ln -sf "$bb" "$BINARIES/$i" && ! $bb ln -f "$bb" "$BINARIES/$i" && {
+      # create script wrapper if symlinking and hardlinking failed because of restrictive selinux policy
+      ! echo "#!$bb" > "$BINARIES/$i" || ! chmod +x "$BINARIES/$i" && {
+        ui_print "ERROR: Failed to set-up pre-bundled busybox"
+        ui_print "Please use TWRP as recovery instead"
+        abort 10
+      }
+    }
+  done
+  PATH="$BINARIES:$PATH" $bb ash "$INSTALLER" "$@"
+  abort "$?"
+} || {
+	ui_print "ERROR: Unable to load pre-bundled busybox"
+	abort 12
+}
