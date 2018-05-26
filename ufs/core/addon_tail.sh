@@ -322,8 +322,9 @@ case "$1" in
 	for i in $(list_files); do
 		[ -e "$S/$i" ] && {
 			set_system_fp "$S/$i"
-			chmod 0755 $(dirname "$S/$i") && \
-			file_log "I: $addon_name: dir set to 755" || \
+			DIRNAME="$(dirname "$S/$i")"
+			chmod 0755 "$DIRNAME" && \
+			file_log "I: $addon_name: dir set to 755 -> $DIRNAME" || \
 			file_log "E: $addon_name: dir chmod 755 failed"
 		}
 	done

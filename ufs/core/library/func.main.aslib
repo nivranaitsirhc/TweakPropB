@@ -202,7 +202,7 @@ asInstall() {
 	# install files
 	for TARGET in $(find $SOURCESYS | sort); do
 		progress=$(awk "BEGIN {printf \"%.5f\",$progress + $ops_arbiter}")
-		progress $progress 1
+		set_progress $progress
 		FILE=/system${TARGET#$SOURCESYS}
 		if [ -d "$TARGET" ] ;then
 			_new_install="$(echo "$FILE" | cut -d/ -f 3-4)"

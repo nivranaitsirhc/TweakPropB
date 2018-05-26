@@ -152,8 +152,8 @@ done
       }
     }
   done
-  PATH="$BINARIES:$PATH" $bb ash "$INSTALLER" "$@"
-  abort "$?"
+  PATH="$BINARIES:$PATH" $bb ash "$INSTALLER" "$@" || abort "$?"
+  exit $?
 } || {
 	ui_print "ERROR: Unable to load pre-bundled busybox"
 	abort 12

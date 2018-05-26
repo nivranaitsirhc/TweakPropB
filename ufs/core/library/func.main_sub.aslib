@@ -41,7 +41,7 @@ extract_zip() {
 		$LT3 "D: ASLIB extract_zip: S3 -> $3"
 		return 25
 	}
-	progress 0 0;
+	progress 1.34 5;
 	unzip -o "$1" "$2" -d "$3" || $LT2 "E: ASLIB extract_zip: errors during extraction"
 	# | while read DUMMY
 	# do
@@ -54,7 +54,7 @@ extract_zip() {
 			# progress 0.$EE 0.1
 		# fi
 	# done
-	progress 1 1
+	progress 1.34 1
 	[ ! -e "$3" ] && {
 		$LT1 "E: ASLIB extract_zip: unable to extract zip"
 		return 1
