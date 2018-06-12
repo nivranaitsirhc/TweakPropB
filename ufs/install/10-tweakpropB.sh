@@ -4,11 +4,6 @@
 #
 #   TweakPropB Addon Script
 #
-#
-#   Title:      Tweak Build Prop Survival ScriptAsus Stock Apps
-#   src:        tweakprop http://forum.xda-developers.com/showthread.php?t=2664332 | https://notabug.org/kl3/tweakprop
-#   api:        XX
-#
 
 . /tmp/backuptool.functions
 

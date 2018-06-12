@@ -63,3 +63,5 @@ set_file_prop() {
 	grep -q "$prop_v=" "$prop_f" && (sed "s/^$prop_v=.*$/$prop_v=$prop_n/" -i "$prop_f")
 	$LT2 "I: ASLIB set_file_prop: $prop_f <- $prop_v to $prop_n"
 }
+
+

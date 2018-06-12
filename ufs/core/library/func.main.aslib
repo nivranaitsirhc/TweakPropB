@@ -225,4 +225,3 @@ asInstall() {
 	progress 1 1
 	sleep 3
 }
-

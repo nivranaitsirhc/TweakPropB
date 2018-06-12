@@ -43,6 +43,7 @@ export COREDIR=/tmp/core
 export BINARIES=/tmp/core/bin
 export LIBS=/tmp/core/library
 export INSTALLER=/tmp/core/installer.sh
+export INIT=/tmp/core/init.sh
 export SYSTEM=/system
 bb=$BINARIES/busybox-arm
 
@@ -56,26 +57,36 @@ ui_print() {
 }
 
 cold_log() {
-	TMP_LOG="${TMP_LOG}"$'\n'"COLD LOG $1"
+	LogTime=`date "+%H:%M:%S"`
+	TMP_LOG="${TMP_LOG}"$'\n'"$LogTime $1"
 	printf "$1\n"
 }
 
-abort() {
-	[ "$1" != "0" ] && {
-		install -d /sdcard/logs/ufs
-		ublogs=/sdcard/logs/ufs/ub_recovery.log
-		ui_print "I: UPDATE-BINARY: flushing cold_logs to $ublogs"
-		cat /tmp/recovery.log > $ublogs
-	}
+exit_() {
+	(sleep 1;kill_tail_recovery)
 	exit $1
 }
 
+fd_log(){
+	devlogs=/sdcard/logs/devlogs
+	[ ! -e $devlogs ] && install -d $devlogs
+	(printf $'\n\n\n\n'"BEGIN RECOVERY TAIL LOGS"$'\n\n';tail -f /tmp/recovery.log >> $devlogs/recovery.log)&	
+}
+
+kill_tail_recovery(){
+	kill $(ps | grep "tail" | grep "recovery.log" | awk '{ print $1 }') || \
+	echo "Error. Unable to kill tail recovery, Manually Reboot the device."
+}
+
+export TMP_LOG="TMP_LOG INIT BY UPDATE-BINARY"
 export cold_log=cold_log
-[ -z "$TMP_LOG" ] && export TMP_LOG="TMP_LOG INIT BY UPDATE-BINARY"
 
 # Pre-Initialization
 # _______________________________________________________________________________________________________
 #
+
+# START FD_LOG
+fd_log;
 
 case "$(uname -m)" in 
 	*mip*)
@@ -100,8 +111,8 @@ ufsBIN="busybox zip lzmadec xzdec"
 eval bb="$BINARIES/busybox-$BINARCH"
 eval l="$BINARIES"
 
- $cold_log "I: UPDATE-BINARY: BINARCH is $BINARCH"
- $cold_log "I: UPDATE-BINARY: Busybox set to $bb"
+$cold_log "I: UPDATE-BINARY: BINARCH is $BINARCH"
+$cold_log "I: UPDATE-BINARY: Busybox set to $bb"
 # Post-Initialization
 # _______________________________________________________________________________________________________
 #
@@ -134,7 +145,7 @@ for bin in $ufsBIN; do
 			  ! echo "$BINARIES/$bin-$BINARCH" > "$BINARIES/$bin" || ! chmod +x "$BINARIES/$bin" && {
 				ui_print "ERROR 10: Failed to set-up pre-bundled $bin "
 				ui_print "Please use TWRP as recovery instead"
-				abort 1
+				exit_ 1
 			  }
 		  }
 		}
@@ -148,13 +159,13 @@ done
       ! echo "#!$bb" > "$BINARIES/$i" || ! chmod +x "$BINARIES/$i" && {
         ui_print "ERROR: Failed to set-up pre-bundled busybox"
         ui_print "Please use TWRP as recovery instead"
-        abort 10
+        exit_ 10
       }
     }
   done
-  PATH="$BINARIES:$PATH" $bb ash "$INSTALLER" "$@" || abort "$?"
-  exit $?
+  PATH="$BINARIES:$PATH" $bb ash "$INIT" "$@"
+  exit_ $?
 } || {
 	ui_print "ERROR: Unable to load pre-bundled busybox"
-	abort 12
+	exit_ 12
 }

@@ -6,8 +6,8 @@
 #	CodRCA : Christian Arvin
 #
 #
-ver="9eac0e5"
-# scenario this script (installer.sh) is called by update-binary
+
+# scenario this script (installer.sh) is called by init.sh
 #
 # EXPORTED VARIABLES from update-binary
 # export COREDIR     /tmp/core
@@ -18,31 +18,10 @@ ver="9eac0e5"
 # export OUTFD
 #
 
-# HEADER DEFAULT MESSAGE
-TMH1="TEST"
-TMH2="############################"
-TMH3="      uniFlashScript        "
-TMH4="############################"
-TMH5="TEST"
 
 # FUNCTIONS
 # ___________________________________________________________________________________________________________ <- 110 char
 #
-
-ui_print(){
-	echo -n -e "ui_print $1\n" >> /proc/self/fd/$OUTFD
-	echo -n -e "ui_print\n"    >> /proc/self/fd/$OUTFD
-	cold_log "$1"
-}
-
-cold_log() {
-	TMP_LOG="${TMP_LOG}"$'\n'"COLD LOG $1"
-	printf "$1\n"
-}
-
-cold_log=cold_log
-[ -z "$TMP_LOG" ] && TMP_LOG="TMP_LOG INIT BY INSTALLER.SH"
-
 
 # placeholder functions
 install_init(){ $cold_log "I: INSTALLER.SH: install.sh was not loaded!"; return 0;}
@@ -56,94 +35,6 @@ abort () { ui_print "$1";exit 1; }
 # PRE-INIT (P.I)
 # ___________________________________________________________________________________________________________ <- 110 char
 #
-
-$cold_log "I: INSTALLER.SH: unified Flash Script - ver: $ver"
-
-# PRINT ESSENTIAL DEF
-$cold_log "I: INSTALLER.SH: listing update-binary variables
-COREDIR   -> $COREDIR
-BINARIES  -> $BINARIES
-LIBS      -> $LIBS
-INSTALLER -> $INSTALLER
-ZIP       -> $ZIP
-OUTFD     -> $OUTFD"
-
-# CHECK FOR PROPER update_binary DEF.
-ERR=0
-[ ! -e "$COREDIR" ] && {
-	ui_print "W: COREDIR is not properly defined"
-	ERR=$((++ERR))
-}
-
-[ ! -e "$LIBS" ] && {
-	ui_print "W: LIBS is not properly defined"
-	ERR=$((++ERR))
-}
-
-[ ! -e "$ZIP" ] && {
-	ui_print "W: ZIP is not properly defined"
-	ERR=$((++ERR))
-}
-
-[ "$ERR" -gt "0" ] && {
-	ui_print "E: update_binary did not properly define variables"
-	exit $ERR
-}
-
-##### PRE-INIT load aslib script and other configs
-# ------------------------------------------------------------------- <- 70 char
-ASLIB=$LIBS/aslib
-$cold_log "I: INSTALLER.SH: LOADING $ASLIB"
-(eval . $ASLIB) && \
-. $ASLIB || {
-	ui_print "E: ERROR $E_ANL: aslib is not loadable!!"
-	abort $E_ANL
-}
-
-ui_print "$E_ANL"
-
-# LOAD UFS CONFIGS
-ER_CODE=$COREDIR/config/er_code
-UFSCONFIG=$COREDIR/config/ufsconfig
-for config in $ER_CODE $UFSCONFIG; do
-	$cold_log "I: INSTALLER.SH: LOADING $config"
-	(eval . $config) && \
-	. $config  || \
-	$cold_log "E: INSTALLER.SH: INTEGRITY UNABLE TO LOAD"
-done
-
-# LOAD USER CONFIGS
-USERCONFIG=$COREDIR/install/config 
-USER_INSTALLSH=$COREDIR/install/install.sh 
-( unzip -o "$ZIP" "install/*" -d "$COREDIR" ) && \
-for config in $USERCONFIG $USER_INSTALLSH; do
-	$cold_log "I: INSTALLER.SH: LOADING $config"
-	(eval . $config) && \
-	. $config  || \
-	$cold_log "E: INSTALLER.SH: INTEGRITY UNABLE TO LOAD"
-done || \
-cold_log "W: INSTALLER.SH: UNABLE TO UNZIP USER CONFIGS"
-
-
-# SETUP ASLIB
-alLSet type 	$aslib_log_type        # FLASH TYPE
-alLSet level	$aslib_log_level       # SET LEVEL 3
-alLSet enable	$aslib_log_enabled     # ENABLE LOGGING
-alLInit                                # INIT ASLIB LOGGING
-
-# DEF_CHECK
-loc_of_config=$UFSCONFIG
-loc_of_aslib=$ASLIB
-def_config_check || ui_print "W: Misconfigs Detetected! check logs"
-
-
-# TURN-OVER TO USER INSTALLER.SH: IF PRESENT IN INSTALL FOLDER
-USER_INSTALLERSH=$COREDIR/install/installer.sh
-[ -e $USER_INSTALLERSH ] && {
-	$cold_log "I: INSTALLER.SH: DETECTED USER INSTALLER.SH, HANDING OVER.."
-	$BINARIES/ash  $USER_INSTALLERSH "$@" && \
-	exit "$?"
-}
 
 
 # INSTALL.SH
@@ -411,7 +302,3 @@ sleep 3
 #############################
 $cold_log "I: INSTALLER.SH: RUNNING install_post"
 install_post || $cold_log "W: INSTALLER.SH: install_post exited with error $?"
-
-
-# FLUSH COLD LOGS
-flush_logs;

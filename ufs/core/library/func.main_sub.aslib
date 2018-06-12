@@ -29,8 +29,6 @@ wipe_system_file() {
 	fi
 }
 
-
-
 ##### ASLIB.SUB.EXTRACT_ZIP
 extract_zip() {
 	$LT4 "D: ASLIB exec extract_zip"
@@ -41,22 +39,24 @@ extract_zip() {
 		$LT3 "D: ASLIB extract_zip: S3 -> $3"
 		return 25
 	}
-	progress 1.34 5;
+	
+	# Determine Zip Size
+	[[ -z "$pc_size_zip" && -n "$ZIP" ]] && {
+		$LT4 "D: ASLIB extract_zip: unknown zip size recalculating"
+		pc_size_zip=$(du -ck $ZIP | tail -n 1 | awk '{ print $1 }')
+	} || $LT4 "D: ASLIB extract_zip: fatal error cannot determine zip size"
+	
+	est_time=$(($pc_size_zip/1024/20))
+	
+	$LT4 "D: ASLIB extract_zip: Zip Size -> $pc_size_zip"
+	$LT4 "D: ASLIB extract_zip: Est Time -> $est_time"
+	
+	progress 1.34 $est_time;
 	unzip -o "$1" "$2" -d "$3" || $LT2 "E: ASLIB extract_zip: errors during extraction"
-	# | while read DUMMY
-	# do
-		# $LT3 "D: ASLIB extract_zip: $DUMMY"
-		# EE=$(($EE+15))
-		# if [ "$EE" -gt "100" ];then
-			# EE=0
-			# progress 0 1
-		# else			
-			# progress 0.$EE 0.1
-		# fi
-	# done
 	progress 1.34 1
 	[ ! -e "$3" ] && {
 		$LT1 "E: ASLIB extract_zip: unable to extract zip"
 		return 1
 	} || return 0
 }
+

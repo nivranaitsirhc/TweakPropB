@@ -20,11 +20,12 @@ init_fd(){
 ##### ASLIB.UI_PRINT
 ui_print() {
 	[ -z "$OUTFD" ] && init_fd
-	
+	[ -n "$1" ] && {
+		LogTime=`date "+%H:%M:%S"`
+		TMP_LOG="${TMP_LOG}"$'\n'"$LogTime $1"
+	}
 	echo -n -e "ui_print $1\n" >> /proc/self/fd/$OUTFD;
 	echo -n -e "ui_print\n"    >> /proc/self/fd/$OUTFD;
-	
-	[ -n "$1" ] && alLog "$1"
 }
 
 ##### ASLIB.SET_PROGRESS
@@ -38,7 +39,6 @@ progress() {
 	[ -z "$OUTFD" ] && init_fd
 	echo "progress $1 $2 " 1>&$OUTFD;
 }
-
 
 ##### ASLIB.ADD.PRINT_HEADER
 print_header(){

@@ -86,7 +86,7 @@ pre_check() {
 def_check() {
 	$LT4 "D: ASLIB exec def_check"
 	local ERR_STAT=0
-	! is_enabled def_init && {
+	! isenabled def_init && {
 		# check ZIP def
 		[[ -z "$ZIP" || ! -e "$ZIP" ]] && {
 			$LT3 "W: ASLIB def_check: var ZIP not defined."
@@ -161,7 +161,7 @@ def_config_check() {
 	# but will be overridden by configs defined by $config_loc
 	[[ -z "$loc_of_config" || ! -e "$loc_of_config" ]] && {
 		$LT2 "W: ASLIB def_config_check: undefined or not existing config_loc. $loc_of_config"
-		_e=1
+		e=1
 	}
 	[[ -z "$loc_of_aslib"  || ! -e "$loc_of_aslib" ]] && {
 		tmp_loc_of_aslib="$(dirname $0)""/aslib"
@@ -169,13 +169,13 @@ def_config_check() {
 			loc_of_aslib=$tmp_loc_of_aslib
 		} || {
 			$LT2 "W: ASLIB def_config_check: undefined or not existing config_loc. $loc_of_aslib"
-			_e=1
+			e=1
 		}
 	}
 	[ -z "$def_config_list" ] && {
 		$LT2 "W: ASLIB def_config_check: null config list"
 	}
-	[ "$_e" -eq "1" ] && {
+	[ "$e" -gt "1" ] && {
 		$LT2 "E: ASLIB def_config_check: integrity error. please check def. not running"
 		return 1
 	}
@@ -214,4 +214,5 @@ def_config_check() {
 		return $DEF_ERR
 	} || return 0
 }
+
 

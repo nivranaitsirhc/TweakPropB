@@ -174,22 +174,10 @@ alLog() {
 	}
 }
 
-
-##### ASLIB.FLUSH_LOGS
-flush_logs() {
-	is_enabled flush_logs || {
-		$LT1 "I: ASLIB flush_logs: Complete log flushing is disabled "
-		return 0
-	}
-	
-	UFSTL="/sdcard/logs/ufs/ufs_log_$al_name.log"
-	$LT1 "I: ASLIB flush_logs: Flushing complete logs to $UFSTL"
-	remount_mountpoint /sdcard rw || $LT1 "E: ASLIB flush_logs: no sdcard access"
-	cold_log "DONE FLUSHING.."
-	echo "uniFlashScript Flush Logs"$'\n\n\n\n' >> $UFSTL
-	echo "FLUSHING COLD_LOGS....$TMP_LOG"       >> $UFSTL
-	echo $'\n\n\n\n'                            >> $UFSTL
-	$LT1 "I: ASLIB flush_logs: done"
-	# copy recovery.log to ufs dir
-	(sleep 2;cat /tmp/recovery.log > /sdcard/logs/ufs/$al_name"_recovery.log") &
+##### ASLIB.COLD_LOG
+cold_log() {
+	LogTime=`date "+%H:%M:%S"`
+	TMP_LOG="${TMP_LOG}"$'\n'"$LogTime $1"
+	printf "$1\n"
 }
+

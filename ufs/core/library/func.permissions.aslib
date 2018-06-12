@@ -3,6 +3,16 @@
 # aslib library
 #
 
+case "$(uname -m)" in 
+	*64*)
+		LIB=lib64
+		;;
+	*)	LIB=lib
+		;;
+esac
+
+SYSTEMLIB=/system/$LIB:/vendor/$LIB
+
 ##### ASLIB.SUB.SET_PERM
 # - set_perm	input1 input2 input3 input4 input 5
 # input1		-> chown user	!--important--!
@@ -15,45 +25,45 @@ set_perm() {
 		chown $1.$2 $4
 		chown $1:$2 $4
 		chmod $3 $4
-	}
-	
-	[ -n "$4" ] && {
 		ch_con $4
-		[ -n "$5" ] && ch_con_ext $4 $5
 	}
+	[ ! -z "$5" ] && ch_con_ext $4 $5
+	# Forced Return 0
+	return 0
 }
 
 ##### ASLIB.SUB.CH_CON
 ch_con() {
 	$LT4 "D: ASLIB exec ch_con"
-	LD_LIBRARY_PATH=$SYSTEMLIB /system/bin/toybox chcon -h u:object_r:system_file:s0 $1  >/dev/null 2>&1
-	LD_LIBRARY_PATH=$SYSTEMLIB /system/toolbox chcon -h u:object_r:system_file:s0 $1     >/dev/null 2>&1
-	LD_LIBRARY_PATH=$SYSTEMLIB /system/bin/toolbox chcon -h u:object_r:system_file:s0 $1 >/dev/null 2>&1
-	chcon -h u:object_r:system_file:s0 $1                                                >/dev/null 2>&1
-	LD_LIBRARY_PATH=$SYSTEMLIB /system/bin/toybox chcon u:object_r:system_file:s0 $1     >/dev/null 2>&1
-	LD_LIBRARY_PATH=$SYSTEMLIB /system/toolbox chcon u:object_r:system_file:s0 $1        >/dev/null 2>&1
-	LD_LIBRARY_PATH=$SYSTEMLIB /system/bin/toolbox chcon u:object_r:system_file:s0 $1    >/dev/null 2>&1
-	chcon u:object_r:system_file:s0 $1                                                   >/dev/null 2>&1
+	! LD_LIBRARY_PATH=$SYSTEMLIB /system/bin/toybox chcon -h u:object_r:system_file:s0 $1  && \
+	! LD_LIBRARY_PATH=$SYSTEMLIB /system/toolbox chcon -h u:object_r:system_file:s0 $1     && \
+	! LD_LIBRARY_PATH=$SYSTEMLIB /system/bin/toolbox chcon -h u:object_r:system_file:s0 $1 && \
+	chcon -h u:object_r:system_file:s0 $1
+	
+	! LD_LIBRARY_PATH=$SYSTEMLIB /system/bin/toybox chcon u:object_r:system_file:s0 $1     && \
+	! LD_LIBRARY_PATH=$SYSTEMLIB /system/toolbox chcon u:object_r:system_file:s0 $1        && \
+	! LD_LIBRARY_PATH=$SYSTEMLIB /system/bin/toolbox chcon u:object_r:system_file:s0 $1    && \
+	chcon u:object_r:system_file:s0 $1
 }
 
 ##### ASLIB.SUB.CH_CON_EXT
 ch_con_ext() { # sub-function of set_perm
 	$LT4 "D: ASLIB exec ch_con_ext"
-	LD_LIBRARY_PATH=$SYSTEMLIB /system/bin/toybox chcon $2 $1   >/dev/null 2>&1
-	LD_LIBRARY_PATH=$SYSTEMLIB /system/toolbox chcon $2 $1	  	>/dev/null 2>&1
-	LD_LIBRARY_PATH=$SYSTEMLIB /system/bin/toolbox chcon $2     >/dev/null 2>&1
-	chcon $2 $1                                                 >/dev/null 2>&1
+	! LD_LIBRARY_PATH=$SYSTEMLIB /system/bin/toybox chcon $2 $1   && \
+	! LD_LIBRARY_PATH=$SYSTEMLIB /system/toolbox chcon $2 $1      && \
+	! LD_LIBRARY_PATH=$SYSTEMLIB /system/bin/toolbox chcon $2     && \
+	chcon $2 $1
 }
 
 
 ##### ASLIB.SUB.LN_CON
 ln_con() {
 	$LT4 "D: ASLIB exec ln_con"
-	LD_LIBRARY_PATH=$SYSTEMLIB /system/bin/toybox ln -s $1 $2 	>/dev/null 2>&1
-	LD_LIBRARY_PATH=$SYSTEMLIB /system/toolbox ln -s $1 $2      >/dev/null 2>&1
-	LD_LIBRARY_PATH=$SYSTEMLIB /system/bin/toolbox ln -s $1 $2	>/dev/null 2>&1
-	ln -s $1 $2                                                 >/dev/null 2>&1
-	ch_con $2                                                   >/dev/null 2>&1
+	! LD_LIBRARY_PATH=$SYSTEMLIB /system/bin/toybox ln -s $1 $2   && \
+	! LD_LIBRARY_PATH=$SYSTEMLIB /system/toolbox ln -s $1 $2      && \
+	! LD_LIBRARY_PATH=$SYSTEMLIB /system/bin/toolbox ln -s $1 $2  && \
+	ln -s $1 $2
+	ch_con $2
 }
 
 ###### ASLIB.SUB.SET_SYSTEM_FP
