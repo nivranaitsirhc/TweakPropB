@@ -129,25 +129,28 @@ def_config_check || ui_print "W: Misconfigs Detetected! check logs"
 
 # TURN-OVER TO USER QUALIFIED CANDIDATE INSTALLER.SH
 USER_INSTALLERSH=$COREDIR/install/installer.sh
-CORE_INSTALLERSH=$COREDIR/core/installer.sh
+CORE_INSTALLERSH=$COREDIR/installer.sh
 [ -e $USER_INSTALLERSH ] && {
-	$cold_log "I: INIT.SH: DETECTED USER INIT.SH, HANDING OVER.."
+	$cold_log "I: INIT.SH: DETECTED USER INSTALLER.SH, HANDING OVER.."
 	(
 		. $USER_INSTALLERSH "$@"
-		ec="$?"
 		flush_log
-		return $ec
-	) || INSTL_ERR=$? && INSTL_ERR=0
+	)
+	INSTL_ERR=$?
 	
 } || {
 	$cold_log "I: INIT.SH: EXEC $CORE_INSTALLERSH"
 	(
 		. $CORE_INSTALLERSH "$@"
-		ec="$?"
 		flush_log
-		return $ec
-	) || INSTL_ERR=$? && INSTL_ERR=0
+	)
+	INSTL_ERR=$?
 }
 
+# HANDLE FLUSH_LOG ON ERROR
+[ "$INSTL_ERR" -ne "0" ] && {
+	$cold_log "E: INIT.SH: Error Executing installer.sh, Check /sdcard/logs/devlogs"
+	flush_log
+}
 # EXIT WITH ERRCODE FROM INSTALLER.SH
-exit "$INSTL_ERR"
+return "$INSTL_ERR"
