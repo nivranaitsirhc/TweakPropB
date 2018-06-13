@@ -52,13 +52,13 @@ bb=$BINARIES/busybox-arm
 #
 
 ui_print() {
-	echo -n -e "ui_print $1\n" >> /proc/self/fd/$OUTFD
-	echo -n -e "ui_print\n" >> /proc/self/fd/$OUTFD
+	echo -n -e "ui_print $1\n" >> /proc/self/fd/$OUTFD;
+	echo -n -e "ui_print\n"    >> /proc/self/fd/$OUTFD;
+	TMP_LOG="${TMP_LOG}"$'\n'"$(date "+%H:%M:%S") $1"
 }
 
 cold_log() {
-	LogTime=`date "+%H:%M:%S"`
-	TMP_LOG="${TMP_LOG}"$'\n'"$LogTime $1"
+	TMP_LOG="${TMP_LOG}"$'\n'"$(date "+%H:%M:%S") $1"
 	printf "$1\n"
 }
 
@@ -111,8 +111,8 @@ ufsBIN="busybox zip lzmadec xzdec"
 eval bb="$BINARIES/busybox-$BINARCH"
 eval l="$BINARIES"
 
-$cold_log "I: UPDATE-BINARY: BINARCH is $BINARCH"
-$cold_log "I: UPDATE-BINARY: Busybox set to $bb"
+cold_log "I: UPDATE-BINARY: BINARCH is $BINARCH"
+cold_log "I: UPDATE-BINARY: Busybox set to $bb"
 # Post-Initialization
 # _______________________________________________________________________________________________________
 #
@@ -142,7 +142,8 @@ for bin in $ufsBIN; do
 		[[ "$bin" != "busybox" && -e "$BINARIES/$bin-$BINARCH" ]] && {
 		  ! ln -sf "$BINARIES/$bin-$BINARCH" "$BINARIES/$bin" && {
 			  # create script wrapper if symlinking and hardlinking failed because of restrictive selinux policy
-			  ! echo "$BINARIES/$bin-$BINARCH" > "$BINARIES/$bin" || ! chmod +x "$BINARIES/$bin" && {
+			  ! echo "$BINARIES/$bin-$BINARCH" > "$BINARIES/$bin" || \
+			  ! chmod +x "$BINARIES/$bin" && {
 				ui_print "ERROR 10: Failed to set-up pre-bundled $bin "
 				ui_print "Please use TWRP as recovery instead"
 				exit_ 1
@@ -154,9 +155,12 @@ done
 
 [ -e "$bb" ] && {
   for i in $($bb --list); do
-    ! ln -sf "$bb" "$BINARIES/$i" && ! $bb ln -sf "$bb" "$BINARIES/$i" && ! $bb ln -f "$bb" "$BINARIES/$i" && {
+    ! ln -sf "$bb" "$BINARIES/$i"     && \
+	! $bb ln -sf "$bb" "$BINARIES/$i" && \
+	! $bb ln -f "$bb" "$BINARIES/$i"  && {
       # create script wrapper if symlinking and hardlinking failed because of restrictive selinux policy
-      ! echo "#!$bb" > "$BINARIES/$i" || ! chmod +x "$BINARIES/$i" && {
+      ! echo "#!$bb" > "$BINARIES/$i" || \
+	  ! chmod +x "$BINARIES/$i" && {
         ui_print "ERROR: Failed to set-up pre-bundled busybox"
         ui_print "Please use TWRP as recovery instead"
         exit_ 10

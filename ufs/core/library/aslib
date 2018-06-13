@@ -155,11 +155,10 @@ export LT4=cold_log	# ! DO NOT MODITY ! Logging Tag-4 cold_log means disabled
 # FUNCTIONS
 # ___________________________________________________________________________________________________________ <- 110 Char
 #
-
 ##### ASLIB.COLD_LOG
 cold_log() {
-		TMP_LOG="${TMP_LOG}"$'\n'"$(date "+%H:%M:%S") $1"
-		printf "$1\n"
+	TMP_LOG="${TMP_LOG}"$'\n'"$(date "+%H:%M:%S") $1"
+	printf "$1\n"
 }
 
 cold_log=cold_log
@@ -177,7 +176,7 @@ cold_log=cold_log
 # LOAD ALL FUNCTIONS
 cold_log "I: ASLIB LOADING LIBRARIES"
 for func in $(ls $LIBS/func.*.aslib);do
-	(eval . $func) && \
+	(eval . $func 1>/dev/null) && \
 	. $func && \
 	cold_log "I: ASLIB LOADED $func" || \
 	cold_log "E: FUNCTION UNLOADABLE"

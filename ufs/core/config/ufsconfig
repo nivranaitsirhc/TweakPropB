@@ -18,7 +18,7 @@ extract_folder=0                 # Tells installer sh to extract user folders in
 user_folders=                    # define your folders here separated by a whitespace
 mountpoints="system sdcard"      # Tells installer sh what to mount
 
-uFS_name="uniFlashScript"       # Name of the Script
+uFS_name="uniFlashScript"        # Name of the Script 
 uFS_src_ver="testing"            # Source version
 uFS_rev_ver="retesting"          # Revision
 

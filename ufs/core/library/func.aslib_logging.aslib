@@ -62,11 +62,11 @@ alLInit() {
 	fi
 	
 	# COLD_LOG TURN-OVER
-	local PRO_LOG="$TMP_LOG"                # TRANSFER LOGS TO PROBITIONARY CONTAINER
-	TMP_LOG=                                # CLEAR TMP_LOG
-	alLog "I: LOADING COLD_LOGS..$PRO_LOG"  # FLUSH COLD_LOGS to ASLIB LOG
-	cold_log=alLog                          # TRANSITION COLD_LOG TO ALLOG
-	PRO_LOG=                                # CLEAR PROBITIONARY CONTAINER
+	local PRO_LOG="$TMP_LOG"                           # TRANSFER LOGS TO PROBITIONARY CONTAINER
+	TMP_LOG=                                           # CLEAR TMP_LOG
+	alLog "ui_print" "I: LOADING COLD_LOGS..$PRO_LOG"  # FLUSH COLD_LOGS to ASLIB LOG
+	cold_log=alLog                                     # TRANSITION COLD_LOG TO ALLOG
+	PRO_LOG=                                           # CLEAR PROBITIONARY CONTAINER
 	
 	al_init=1
 }
@@ -165,19 +165,23 @@ alLSet() {
 alLog() {
 	[ "$al_enable" != 1 ] && return 0
 
-	[ -n "$1" ] && IN="$*" || read IN
+	[ -n "$1" ] && {
+		[ "$1" != "ui_print" ] && {
+			IN="$*"
+			printf "$IN\n"
+		} || {
+			IN="$2"
+		}
+	} || read IN
 
 	[ -n "$IN" ] && {
-		LogTime=`date "+%H:%M:%S"`
-		echo 	"$LogTime $IN" >> $logfile
-		cold_log "$IN"
+		echo 	"$(date "+%H:%M:%S") $IN" >> $logfile
+		TMP_LOG="${TMP_LOG}"$'\n'"$(date "+%H:%M:%S") $IN"        
 	}
 }
 
 ##### ASLIB.COLD_LOG
 cold_log() {
-	LogTime=`date "+%H:%M:%S"`
-	TMP_LOG="${TMP_LOG}"$'\n'"$LogTime $1"
+	TMP_LOG="${TMP_LOG}"$'\n'"$(date "+%H:%M:%S") $1"
 	printf "$1\n"
 }
-
