@@ -1,6 +1,6 @@
-*.zip
+#*.zip
 *.txt
 *.cmd
-*.md5
+#*.md5
 *.exe
 ufs/system/*

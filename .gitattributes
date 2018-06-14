@@ -4,3 +4,5 @@
 
 ufs/core/bin	binary
 ufs/system		binary
+*.zip			binary
+*.md5			binary
