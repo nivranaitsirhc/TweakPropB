@@ -18,6 +18,15 @@ TMH5="TEST"
 # ___________________________________________________________________________________________________________ <- 110 char
 #
 
+# placeholder functions
+install_init(){ $cold_log "I: INSTALLER.SH: install.sh was not loaded!"; return 0;}
+
+install_main(){ $cold_log "I: INSTALLER.SH: install.sh was not loaded!"; return 0;}
+
+install_post(){ $cold_log "I: INSTALLER.SH: install.sh was not loaded!"; return 0;}
+
+abort () { ui_print "$1";exit 1; }
+
 ui_print(){
 	echo -n -e "ui_print $1\n" >> /proc/self/fd/$OUTFD
 	echo -n -e "ui_print\n"    >> /proc/self/fd/$OUTFD
@@ -32,7 +41,7 @@ cold_log() {
 flush_log(){
 	cold_log "I: INIT.SH: Flushing TMP_LOG"
 	cold_log "I: INIT.SH: Flushing DONE!!"
-	uFS_TL=/sdcard/logs/devlogs/$uFS_name"_flush.log"
+	uFS_TL=/sdcard/logs/devlogs/flush_$uFS_name.log
 	echo $'\n\n\n'"FLUSH LOG $(date)"$'\n' >> $uFS_TL
 	echo "$TMP_LOG"                        >> $uFS_TL
 	echo $'\n'"DONE..."$'\n\n'             >> $uFS_TL

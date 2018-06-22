@@ -37,7 +37,8 @@ pre_check() {
 		$LT2 "W: ASLIB pre_check: system  is not mounted"
 		pc_system_mounted=false
 	}
-
+	
+	# Check Zip Size
 	pc_size_zip=$(du -ck $ZIP | tail -n 1 | awk '{ print $1 }')
 	
 	# Compare total system space vs zip total
@@ -86,7 +87,7 @@ pre_check() {
 def_check() {
 	$LT4 "D: ASLIB exec def_check"
 	local ERR_STAT=0
-	! isenabled def_init && {
+	! is_enabled def_init && {
 		# check ZIP def
 		[[ -z "$ZIP" || ! -e "$ZIP" ]] && {
 			$LT3 "W: ASLIB def_check: var ZIP not defined."

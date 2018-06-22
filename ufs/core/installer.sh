@@ -18,20 +18,6 @@
 # export OUTFD
 #
 
-
-# FUNCTIONS
-# ___________________________________________________________________________________________________________ <- 110 char
-#
-
-# placeholder functions
-install_init(){ $cold_log "I: INSTALLER.SH: install.sh was not loaded!"; return 0;}
-
-install_main(){ $cold_log "I: INSTALLER.SH: install.sh was not loaded!"; return 0;}
-
-install_post(){ $cold_log "I: INSTALLER.SH: install.sh was not loaded!"; return 0;}
-
-abort () { ui_print "$1";exit 1; }
-
 # PRE-INIT (P.I)
 # ___________________________________________________________________________________________________________ <- 110 char
 #

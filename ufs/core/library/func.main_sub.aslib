@@ -43,8 +43,9 @@ extract_zip() {
 	# Determine Zip Size
 	[[ -z "$pc_size_zip" && -n "$ZIP" ]] && {
 		$LT4 "D: ASLIB extract_zip: unknown zip size recalculating"
-		pc_size_zip=$(du -ck $ZIP | tail -n 1 | awk '{ print $1 }')
-	} || $LT4 "D: ASLIB extract_zip: fatal error cannot determine zip size"
+		pc_size_zip=$(du -ck $ZIP | tail -n 1 | awk '{ print $1 }') || \
+		$LT4 "D: ASLIB extract_zip: fatal error cannot determine zip size"
+	}
 	
 	est_time=$(($pc_size_zip/1024/20))
 	
