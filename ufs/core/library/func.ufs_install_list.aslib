@@ -1,0 +1,140 @@
+#!/sbin/sh
+#
+#	aslib library
+#
+#	CodRLabworks
+#	CodRCA aslib Library Template v4
+#
+
+# LIBRARY DESCRIPTION
+# --------------------------------------------------------------------------------
+# I: UFS_INSTALL_LIST, A Sub function of UFS_INSTALL LIBRARY for list handling
+#
+#
+
+# ----------------------------- ASLIB LIBRARY HEADER -----------------------------
+# ASLIB CLEAR
+# --------------------------------------------------------------------------------
+# I: Add The Paths of the files or directory that will be cleared by ASLIB_CLEAR separated by a double dot
+[ -z "$ASLIB_CLEAR" ] && {
+	# aslib clear is not defined by aslib loader may be obsolete or library is sourced directly
+	printf "I: Lib $AS_SCRIPT is sourced directly"
+}
+ASLIB_CLEAR "YOUR_PATH"
+# ---------------------------------- END HEADER ----------------------------------
+
+# INIT VARIABLES
+# --------------------------------------------------------------------------------
+# I: INIT your variables here. avoid exporting your variables here. add it in the
+#    aslib loader.
+
+# List File Definition
+export wipe_list=/sdcard/logs/.devlogs/wipe_list && echo "" > $wipe_list
+export file_list=/sdcard/logs/.devlogs/file_list && echo "" > $file_list
+export link_list=/sdcard/logs/.devlogs/link_list && echo "" > $link_list
+
+# FUNCTIONS
+# --------------------------------------------------------------------------------
+# I: DEFINE your functions
+
+##### ASLIB.CREATE_WIPELIST
+create_wipelist() {
+	$LT4 "D: ASLIB exec create_wipelist"
+	is_enabled init_create_wipelist && {
+		$LT2 "I: ASLIB create_wipelist: not allowed to run twice"
+		return 0
+	}
+
+	$LT3 "I: ASLIB create_wipelist: parsing wipe_list from $COREDIR"
+
+	(ls $COREDIR/config/wipe_*.list >/dev/null 2>&1)  && {
+		for WIPE_TARGET in $(ls -1 $COREDIR/config/wipe_*.list); do
+			( test -s "$WIPE_TARGET" ) && {
+				for FILE_TARGET in $(cat $WIPE_TARGET); do wipe_list "$FILE_TARGET";done
+			} || $LT2 "I: ASLIB create_wipelist: $WIPE_TARGET skipped, Empty"
+		done
+	} || $LT3 "W: ASLIB create_wipelist: $COREDIR/config has no wipe list"
+
+	(ls $COREDIR/install/wipe_*.list >/dev/null 2>&1) && {
+		for WIPE_TARGET in $(ls -1 $COREDIR/install/wipe_*.list); do
+			( test -s "$WIPE_TARGET" ) && {
+				for FILE_TARGET in $(cat $WIPE_TARGET); do wipe_list "$FILE_TARGET";done
+			} || $LT2 "I: ASLIB create_wipelist: $WIPE_TARGET skipped, Empty"
+		done
+	} || $LT3 "W: ASLIB create_wipelist: $COREDIR/install has no wipe list"
+
+	$LT3 "I: ASLIB create_wipelist: fixing wipe_list"
+	echo "$(cat $wipe_list | sort -u | sed '/^ *$/d')" > $wipe_list
+	
+	init_create_wipelist=1
+}
+
+
+# ASLIB.FILE_LIST
+file_list() {
+	echo "$1" >> $file_list
+}
+
+# ASLIB.WIPE_LIST
+wipe_list() {
+	echo "$1" >> $wipe_list
+}
+
+# ASLIB.INIT_WIPE_LIST
+INIT_WIPE_LIST() {
+	# Create Wipe_List
+	[ ! -e "$wipe_list" ] && {
+		export INIT_WIPE_LIST=true
+		install -d /sdcard/logs/.devlogs
+		echo "" > $wipe_list
+	}
+}
+
+# ASLIB.INIT_FILE_LIST
+INIT_FILE_LIST() {
+	# Create File_List
+	[ ! -e "$file_list" ] && {
+		export INIT_FILE_LIST=true
+		install -d /sdcard/logs/.devlogs
+		echo "" > $file_list
+	}
+}
+
+# ASLIB.INIT_LINK_LIST
+INIT_LINK_LIST() {
+	# Create Link_List
+	[ ! -e "$link_list" ] && {
+		export INIT_LINK_LIST=true
+		install -d /sdcard/logs/.devlogs
+		echo "" > $link_list
+	}
+}
+
+# ASLIB.CLEAR_LIST
+clear_list() {
+	[[ -z "$INIT_FILE_LIST" || "$INIT_FILE_LIST" == "true" ]] && rm -rf $file_list;
+	[[ -z "$INIT_WIPE_LIST" || "$INIT_WIPE_LIST" == "true" ]] && rm -rf $wipe_list;
+	[[ -z "$INIT_LINK_LIST" || "$INIT_LINK_LIST" == "true" ]] && rm -rf $link_list;
+}
+
+# INIT SCRIPT
+# --------------------------------------------------------------------------------
+# I: INITIALIZE your library
+
+# Rename this function with format init_YOUR_LIBRARY_NAME as it will be run by aslib loader after
+# all the libraries are loaded. 
+# e.g.
+# your library					proper function init name	 
+# func.DUMMY_LIBRARY.aslib ->	init_DUMMY_LIBRARY(){}
+#
+
+init_ufs_install_list(){
+	if [ -z "$INIT_FILE_LIST" ] || [ "$INIT_FILE_LIST" -ne "true" ];then INIT_FILE_LIST;fi
+	if [ -z "$INIT_WIPE_LIST" ] || [ "$INIT_WIPE_LIST" -ne "true" ];then INIT_WIPE_LIST;fi
+	return 0
+}
+
+# ASLIB RETURN CONFIRMATION
+# --------------------------------------------------------------------------------
+# 
+printf "SCRIPT LOADED $AS_SCRIPT\n"

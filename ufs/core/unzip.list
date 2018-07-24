@@ -1,0 +1,10 @@
+# define here folder_names to be extracted by update-binary. Must end it with "/*"
+#
+config/*
+library/*
+
+# define here file_names to be extracted by update binary
+#
+addon_tail.sh
+init.sh
+installer.sh

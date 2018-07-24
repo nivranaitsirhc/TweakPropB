@@ -27,6 +27,7 @@ uFS_rev_ver="retesting"          # Revision
 aslib_req=1000;                  # alib required version
 aslib_asWipelist=1               # set to zero to disable wipe function
 aslib_asAddon=1                  # set to zero to disable addon function
+aslib_asInstall_ow=0             # set to zero to disable install overwrite 
 aslib_asInstall=1                # set to zero to disable install function
 aslib_asExtract=1                # set to zero to disable extract function
 

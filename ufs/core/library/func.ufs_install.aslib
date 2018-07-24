@@ -1,0 +1,388 @@
+#!/sbin/sh
+#
+#	aslib library
+#
+#	CodRLabworks
+#	CodRCA aslib Library Template v4
+#
+
+# LIBRARY DESCRIPTION
+# --------------------------------------------------------------------------------
+# I: UFS_INSTALL, A library for Automated Recovery Installation/manipulation of system files
+#
+#
+
+# ----------------------------- ASLIB LIBRARY HEADER -----------------------------
+# ASLIB CLEAR
+# --------------------------------------------------------------------------------
+# I: Add The Paths of the files or directory that will be cleared by ASLIB_CLEAR separated by a double dot
+[ -z "$ASLIB_CLEAR" ] && {
+	# aslib clear is not defined by aslib loader may be obsolete or library is sourced directly
+	printf "I: Lib $AS_SCRIPT is sourced directly"
+}
+ASLIB_CLEAR "/sdcard/tmp/tmplib"
+# ---------------------------------- END HEADER ----------------------------------
+
+# INIT VARIABLES
+# --------------------------------------------------------------------------------
+# I: INIT your variables here. avoid exporting your variables here. add it in the
+#    aslib loader.
+
+
+# FUNCTIONS
+# --------------------------------------------------------------------------------
+# I: DEFINE your functions
+
+##### ASLIB.BASIC.WIPE_LIST
+asWipelist() {
+	$LT1 "I: ASLIB exec asWipelist"
+	is_enabled aslib_asWipelist || {
+		ui_print "W: asWipelist is DISABLED"
+		return 0
+	}
+
+	# create wipe list
+	create_wipelist;
+	
+	# wipe files
+	for WIPE in $(cat $wipe_list); do
+		wipe_system_file "$WIPE"
+	done
+}
+
+##### ASLIB.BASIC.ASADDON
+asAddon() {
+	$LT1 "I: ASLIB exec asAddon"
+	is_enabled aslib_asAddon || {
+		ui_print "W: asAddon is DISABLED"
+		return 0
+	}
+	
+	local ERR_STAT=0
+	# Check addon tail def. and redef. addon_tail
+	if [[ -n "$addon_tail" && -e "$COREDIR/install/$addon_tail" ]]; then
+		$LT2 "I: ASLIB asAddon: using install/$addon_tail"
+		addon_tail="$COREDIR/install/$addon_tail"
+    elif [[ -n "$addon_tail" && -e "$COREDIR/$addon_tail" ]]; then
+		$LT2 "I: ASLIB asAddon: using defined addon_tail in CORE."
+		addon_tail="$COREDIR/$addon_tail"
+	elif [[ -z "$addon_tail" && -e "$COREDIR/addon_tail.sh" ]]; then
+		$LT2 "W: ASLIB asAddon: addon_tail is not defined. Using default addon_tail.sh"
+		addon_tail="$COREDIR/addon_tail.sh"
+	else
+		$LT2 "E: ASLIB asAddon: missing addon_tail !"
+		ERR_STAT=$((++ERR_STAT))
+	fi
+
+	# check flashmode
+	[ $aub = "0" ] && {
+		$LT2 "E: ASLIB asAddon: This function should be run in flashmode"
+		ERR_STAT=$((++ERR_STAT));
+	}
+
+	# check if essentials are defined
+	[[ -z "$addon_name" || -z "$uFS_src_ver" || -z "$uFS_rev_ver" ]] && {
+		$LT2 "W: ASLIB asAddon: Missing Essential Variables"
+		$LT3 "D: ASLIB asAddon: addon_name  -> $addon_name"
+		$LT3 "D: ASLIB asAddon: uFS_rev_ver -> $uFS_rev_ver"
+		$LT3 "D: ASLIB asAddon: uFS_src_ver -> $uFS_src_ver"
+		ERR_STAT=$((++ERR_STAT));
+	}
+
+	[ "$ERR_STAT" -gt "0" ] && {
+		ui_print "W: Cannot create addon due to errors!"
+		return 0
+	}
+
+	# set the addon delay
+	[ -z "$1" ] && {
+		[ ! -z "$addon_delay" ] && {
+			ind=90
+			$LT2 "W: ASLIB asAddon empty ind; setting to default $ind"
+		} || {
+			ind=$addon_delay
+			$LT2 "I: ASLIB asAddon: using user defined addon_delay -> $addon_delay"
+		}
+	} || {
+		ind=$1
+		$LT2 "I: ASLIB asAddon: setting addon_delay to -> $ind"
+	}
+
+	# def. generated addon file name
+	addon_filename="$ind-$addon_name.sh";
+	
+	# fix file_list
+	$LT4 "I: ASLIB asAddon: fixing file_list"
+	echo "$(cat $file_list | sort -ur | sed '/^ *$/d')" > $file_list
+
+	# sed file_list to addon_tail
+	$LT2 "I: ASLIB asAddon: injecting install list to $addon_tail"
+	for _file_list in $(cat $file_list); do
+		sed -i "\:#list_file_guide:a$_file_list" $addon_tail
+		$LT3 "D: ASLIB asAddon: <- $_file_list" || {
+		$LT3 "E: ASLIB asAddon: Unable to Inject Link List to $addon_tail. Missing guide!"
+		break;
+		}
+	done
+	
+	# fix wipe_list
+	$LT4 "I: ASLIB asAddon: fixing wipe_list"
+	echo "$(cat $wipe_list | sort -ur | sed '/^ *$/d')" > $wipe_list
+	
+	# sed the wipelist to addon_tail
+	$LT2 "I: ASLIB asAddon: injecting wipe list to $addon_tail"
+	local IFS=$'\n'
+	for _wipe_file in $(cat $wipe_list); do
+		sed -i "\:wipe_list=:a$_wipe_file" $addon_tail
+		$LT3 "D: ASLIB asAddon: <- $_wipe_file" || {
+		$LT3 "E: ASLIB asAddon: Unable to Inject Wipe List to $addon_tail. Missing guide!"
+		break;
+		}
+	done
+	
+	# fix link_list
+	$LT4 "I: ASLIB asAddon: fixing link_list"
+	echo "$(cat $link_list | sort -ur | sed '/^ *$/d')" > $link_list
+	
+	# inject the linkfile
+	$LT2 "I: ASLIB asAddon: injecting link list to $addon_tail"
+	local IFS=$'\n'
+	for link_list in $(cat $link_list); do
+		sed -i "\:#list_link_guide:a$link_list" $addon_tail && \
+		$LT3 "D: ASLIB asAddon: <- $link_list" || {
+		$LT3 "E: ASLIB asAddon: Unable to Inject Link List to $addon_tail. Missing guide!"
+		break;
+		}
+	done
+
+	# set addon properties
+	$LT2 "I: ASLIB asAddon: setting variables to $addon_tail"
+	set_file_prop $addon_tail addon_name    $addon_name
+	set_file_prop $addon_tail addon_src_ver $uFS_src_ver
+	set_file_prop $addon_tail addon_app_rev $uFS_rev_ver
+
+	# clean-up same name addon.d script
+	if [ -e /system/addon.d/$addon_filename ]; then
+		$LT3 "D: ASLIB asAddon: removing existing addon script."
+		rm -rf /system/addon.d/$addon_filename
+	fi
+
+	# create the addon file
+	$LT1 "I: ASLIB asAddon: creating and installing $addon_filename"
+	mkdir_p /system/addon.d;
+	cat $addon_tail >   /system/addon.d/$addon_filename;
+
+	# set permission for addon.d script
+	$LT1 "I: ASLIB asAddon: setting permissions for $addon_filename"
+	set_perm 0 0 0755 /system/addon.d/$addon_filename
+}
+
+##### ASLIB.BASIC.ASEXTRACT
+asExtract() {
+	$LT1 "I: ASLIB exec asExtract"
+	is_enabled aslib_asExtract || {
+		ui_print "W: asExtract: is DISABLED"
+		return 0
+	}
+	
+	# def check
+	def_check;
+
+	# def. the essential directories if not def.
+	if [[ -e "$SOURCEDIR" && ! -d "$SOURCEDIR" ]]; then
+		$LT2 "I: ASLIB asExtract: FIXING & CREATING DIR $SOURCEDIR"
+		(rm -f $SOURCEDIR; mkdir -p $SOURCEDIR)
+	elif [ ! -e "$SOURCEDIR" ];then
+		$LT2 "I: ASLIB asExtract: CREATING DIR $SOURCEDIR"
+		(mkdir -p $SOURCEDIR)
+	fi
+
+	# extracting system
+	$LT1 "I: ASLIB asExtract: EXTRACTING SYSTEM SOURCEDIR"
+	$LT3 "D: ASLIB asExtract: ZIP FILE       -> $ZIP"
+	$LT3 "D: ASLIB asExtract: EXTRACT TARGET -> system/*"
+	$LT3 "D: ASLIB asExtract: EXTRACT TO     -> $SOURCEDIR"
+
+	$LT1 "I: ASLIB asExtract: extracting system files"
+	extract_zip "$ZIP" "system/*" "$SOURCEDIR" || { ui_print "E: Error occured during zip extraction."; abort $E_ZEF; }
+
+	[ -e $SOURCESYS ] && {
+		$LT2 "I: ASLIB asExtract: SOURCESYS successfully created"
+	} || {
+		$LT2 "I: ASLIB asExtract: DISABLING asInstall"
+		aslib_asInstall=0
+	}
+}
+
+##### ASLIB.BASIC.ASINSTALL
+asInstall() {
+	$LT1 "I: ASLIB exec asInstall"
+	is_enabled aslib_asInstall || {
+		ui_print "W: asInstall: is DISABLED"
+		return 0
+	}
+
+	# DEF_CHECK
+	def_check || {
+		$LT1 "I: ASLIB asInstall: ERROR in required ESSENTIAL DIRECTORIES, Please run pre_check() and asExtract() first"
+		return 1
+	}
+
+	# recheck system mountpoints
+	! is_mounted /system rw && {
+		ui_print "E: ASLIB asInstall: /system not mounted properly"
+		exit 1
+	}
+
+	# ----- BEGIN INIT -----
+	#
+	
+	# Reset Progress Bar
+	progress 0 0;
+	
+	# variable Definitions 
+	local ops_count=0;local progress=0;
+
+	# prepare count for fancy progress
+	for dummy in $(find $SOURCESYS); do
+		ops_count=$((++ops_count));
+	done
+	ops_arbiter=$(awk "BEGIN {printf \"%.5f\",1/$ops_count}")
+
+	# read global setting for install overwrite
+	local al_ow=;
+	is_enabled aslib_asInstall_ow && al_ow=true || al_ow=false
+	
+	# initialize the system ABI
+	local INSLIB=true;
+	local RO_ABI=;local ABI=;local LIB=;local VENDORLIB=;
+	local ABILIST="$(get_prop ro.product.cpu.abilist)"
+	case $ABILIST in
+		*arm64-v8a*)
+			ABI="arm64-v8a"		;;
+		*armeabi-v7a*)
+			ABI="armeabi-v7a"	;;
+		*armeabi*)
+			ABI="armeabi"		;;
+		*)	INSLIB=false		;;
+	esac
+	
+	[ "$INSLIB" == "true" ] && {
+		## < ---- DISPLAY SYSTEM ARCH ---- >
+		RO_ABI=$ABI
+		$LT4 "D: ASLIB asInstall: detected ABI -> $ABI"
+		## < ----         END         ---- >
+	}
+	
+	#
+	# ----- END INIT -----
+	#
+	
+	# install files
+	for TARGET in $(find $SOURCESYS | sort); do
+		progress=$(awk "BEGIN {printf \"%.5f\",$progress + $ops_arbiter}")
+		set_progress $progress
+		FILE=/system${TARGET#$SOURCESYS}
+		TARGETAPP="$(echo "$FILE" | cut -d/ -f 3-4)"
+		if [ -d "$TARGET" ];then
+			_new_install="$TARGETAPP"
+			[ "$_new_install" != "$_old_install" ] && {
+				# $LT2 "I: ASLIB asInstall <- $_new_install"
+				ui_print "I: - $_new_install" # installation cosmetics
+				_old_install="$_new_install"
+			}
+			[ ! -e "$FILE" ] && {
+					mkdir_p "$FILE" || $LT3 "E: ASLIB asInstall: Failed to create $FILE"
+			}
+		else
+			SYSTEMINST="$(echo "$FILE" | cut -d/ -f 3-3)";SYSTEMPATH="$(echo "$FILE" | cut -d/ -f 1-4)";
+			 (echo "$FILE" | grep -q "apk") && [[ "$INSLIB" == "true" && "$SYSTEMINST" == "app" || "$SYSTEMINST" == "priv-app" ]] && {
+				$LT4 "D: ASLIB asInstall: Processing APK.. $TARGETAPP"
+				# Reset INSTALL
+				INSTALL=false
+				TARGET_LIST="$(unzip -l $TARGET | grep lib/ | awk '{ print $4 }')"
+				(echo "$TARGET_LIST" | grep -q "lib/") && {
+					ABI="arm64-v8a"#;LIB="arm64";VENDORLIB="/system/vendor/lib64"
+					[ "$RO_ABI" == "arm64-v8a" ] && (echo "$TARGET_LIST" | grep -q "lib/$ABI") && {
+						install_app_lib "$TARGET" "$ABI" "arm64" "/system/vendor/lib64" "$SYSTEMPATH" &&\
+						INSTALL=true; 
+					} || {
+						$LT4 "D: ASLIB asInstall: $TARGET has no arm64-v8a library. trying armeabi-v7a"
+						ABI="armeabi-v7a";#LIB="arm";VENDORLIB="/system/vendor/lib"
+						(echo "$TARGET_LIST" | grep -q "lib/$ABI") && {
+							install_app_lib "$TARGET" "$ABI" "arm" "/system/vendor/lib" "$SYSTEMPATH" &&\
+							INSTALL=true; 
+						} || {
+							$LT4 "D: ASLIB asInstall: $TARGET has no armeabi-v7a library. trying armeabi"
+							ABI="armeabi";
+							(echo "$TARGET_LIST" | grep -q "lib/$ABI") && {
+								install_app_lib "$TARGET" "$ABI" "arm" "/system/vendor/lib" "$SYSTEMPATH" &&\
+								INSTALL=true; 
+							} || $LT4 "E: ASLIB asInstall: We did not detect $TARGETAPP's library files, strange..."
+						}
+					}
+				} || $LT4 "D: ASLIB asInstall: $TARGET has no package lib"
+				
+				[ "$INSTALL" == "false" ] && {
+					# lets check if a lib is defined in its directory lets copy that.
+					AD="$(dirname $TARGET)/lib"
+					[ -e "$AD" ] && {
+						$LT4 "D: ASLIB asInstall: $TARGET has included library. installing.."
+						# local RnO=false;
+						for L in $(find $AD -name *.so);do
+							local F="$SYSTEMPATH/lib${L#$AD}"
+							$LT4 "D: ASLIB asInstall: installing so file to $F"
+							install_app_sys "$L" "$F"
+							file_list "${F#/system/}"
+						done
+					}
+				}
+				
+			}
+			
+			# INSTALL FILE
+			# lets ignore /system/app/app/lib only if there is an APK
+			if [[ "$FILE" == "${FILE/'$TARGETAPP/lib'/}" || ! -e "/system/$TARGETAPP/$(echo $FILE | cut -d/ -f 4-4).apk" ]];then
+				if [ -e "$FILE" ];then
+					$LT4 "W: ASLIB asInstall: $FILE already exist. "
+					# check if the file is the same if yes just ignore it
+					(cmp -s "$TARGET" "$FILE" >/dev/null 2>&1) && {
+						$LT4 "D: ASLIB asInstall: IGNORING,  The file are the same."
+						file_list "${FILE#/system/}" # if it exist lets preserve it also.
+					} || {
+						[ "$al_ow" == "true" ] && {
+							$LT4 "D: ASLIB asInstall: OVERWRITE, overwrite enabled. overwriting $FILE"
+							install_file "$TARGET" "$FILE";
+						} || $LT4 "W: ASLIB asInstall: IGNORING,  we are not allowed to overwrite the file."
+					} 
+				else
+					install_file "$TARGET" "$FILE";
+				fi
+			fi
+		fi
+	done
+	# generate the vendor_pub_list
+	
+	progress 1 1
+	sleep 3
+}
+
+# INIT SCRIPT
+# --------------------------------------------------------------------------------
+# I: INITIALIZE your library
+
+# Rename this function with format init_YOUR_LIBRARY_NAME as it will be run by aslib loader after
+# all the libraries are loaded. 
+# e.g.
+# your library					proper function init name	 
+# func.DUMMY_LIBRARY.aslib ->	init_DUMMY_LIBRARY(){}
+#
+
+init_ufs_install(){
+	return 0
+}
+
+# ASLIB RETURN CONFIRMATION
+# --------------------------------------------------------------------------------
+# 
+printf "SCRIPT LOADED $AS_SCRIPT\n"

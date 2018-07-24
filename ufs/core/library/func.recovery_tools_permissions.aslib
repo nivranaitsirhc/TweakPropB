@@ -1,0 +1,148 @@
+#!/sbin/sh
+#
+#	aslib library
+#
+#	CodRLabworks
+#	CodRCA aslib Library Template v4
+#
+
+# LIBRARY DESCRIPTION
+# --------------------------------------------------------------------------------
+# I: RECOVERY SUB Tool permissions
+#
+#
+
+# ----------------------------- ASLIB LIBRARY HEADER -----------------------------
+# ASLIB CLEAR
+# --------------------------------------------------------------------------------
+# I: Add The Paths of the files or directory that will be cleared by ASLIB_CLEAR separated by a double dot
+[ -z "$ASLIB_CLEAR" ] && {
+	# aslib clear is not defined by aslib loader may be obsolete or library is sourced directly
+	printf "I: Lib $AS_SCRIPT is sourced directly"
+}
+ASLIB_CLEAR "YOUR_PATH"
+# ---------------------------------- END HEADER ----------------------------------
+
+# INIT VARIABLES
+# --------------------------------------------------------------------------------
+# I: INIT your variables here. avoid exporting your variables here. add it in the
+#    aslib loader.
+
+export INIT_SYSLIB_ARCH=false
+
+# FUNCTIONS
+# --------------------------------------------------------------------------------
+# I: DEFINE your functions
+
+init_permissions(){
+	[ "$INIT_SYSLIB_ARCH" != "false" ] && {
+		$LT2 "W: ASLIB init_permissions: cannot run twice!"
+		return 0
+	}
+	case "$(get_prop ro.product.cpu.abilist)" in 
+		*arm64*)
+			local LIB=lib64
+			;;
+		*amreabi*)
+			local LIB=lib
+			;;
+		*mips64*)
+			local LIB=mips64
+			;;
+		*mips*)
+			local LIB=mips
+			;;
+		*x86*)
+			local LIB=x86
+			;;
+		*x86_64*)
+			local LIB=x86_64
+			;;
+	esac
+	export SYSTEMLIB=/system/$LIB:/vendor/$LIB
+	INIT_SYSLIB_ARCH=true
+}
+
+##### ASLIB.SUB.CH_CON
+ch_con() {
+	[ "$INIT_SYSLIB_ARCH" != "true" ] && init_permissions;
+	local P="u:object_r:system_file:s0";local r=;
+	$LT4 "D: ASLIB ch_con: $1"
+	! LD_LIBRARY_PATH=$SYSTEMLIB /system/bin/toybox chcon -h "$P" "$1"  && \
+	! LD_LIBRARY_PATH=$SYSTEMLIB /system/toolbox chcon -h "$P" "$1"     && \
+	! LD_LIBRARY_PATH=$SYSTEMLIB /system/bin/toolbox chcon -h "$P" "$1" && \
+	chcon -h "$P" "$1"
+	r=$?;
+	! LD_LIBRARY_PATH=$SYSTEMLIB /system/bin/toybox chcon "$P" "$1"     && \
+	! LD_LIBRARY_PATH=$SYSTEMLIB /system/toolbox chcon "$P" "$1"        && \
+	! LD_LIBRARY_PATH=$SYSTEMLIB /system/bin/toolbox chcon "$P" "$1"    && \
+	chcon "$P" "$1"
+	r=$?
+	return $r
+}
+
+##### ASLIB.SUB.CH_CON_EXT
+ch_con_ext() {
+	[ "$INIT_SYSLIB_ARCH" != "true" ] && init_permissions;
+	$LT4 "D: ASLIB ch_con_ext: $1 $2"
+	! LD_LIBRARY_PATH=$SYSTEMLIB /system/bin/toybox chcon "$1" "$2"		&& \
+	! LD_LIBRARY_PATH=$SYSTEMLIB /system/toolbox chcon "$1" "$2"		&& \
+	! LD_LIBRARY_PATH=$SYSTEMLIB /system/bin/toolbox chcon "$1" "$2"	&& \
+	chcon "$1" "$2"
+	return $?
+}
+
+
+##### ASLIB.SUB.LN_CON
+ln_con() {
+	$LT4 "D: ASLIB ln_con: $1 $2"
+	! LD_LIBRARY_PATH=$SYSTEMLIB /system/bin/toybox ln -s "$1" "$2"   && \
+	! LD_LIBRARY_PATH=$SYSTEMLIB /system/toolbox ln -s "$1" "$2"      && \
+	! LD_LIBRARY_PATH=$SYSTEMLIB /system/bin/toolbox ln -s "$1" "$2"  && \
+	ln -s "$1" "$2"
+	ch_con "$2"
+}
+
+###### ASLIB.SUB.SET_SYSTEM_FP
+set_system_fp() {
+	$LT4 "D: ASLIB exec set_system_fp"
+	[ -n "${1##*/system*}" ] && {
+		$LT2 "E: ASLIB set_system_fp: not valid system file input $1 only system files with full path are accepted"
+		return 0;
+	}
+	
+	# if bin xbin sbin
+	if   [[ -f "$1" && -z "${1##*/bin*}" || -z "${1##*/xbin*}" || -z "${1##*/sbin*}" ]]; then
+		set_perm 0 2000 0755 "$1" && \
+		chmod +x "$1"
+	elif [[ -f "$1" && -z "${1##*/vendor/lib*}" || -z "${1##*/vendor/lib64*}" ]]; then
+		[ "$ANDROID_SDK_VER" -ge "26" ] && local P="u:object_r:same_process_hal_file:s0" || P="u:object_r:vendor_file:s0"
+		set_perm 0 0 0644 "$P" "$1"
+	else
+		local p=;
+		[ -f "$1" ] && p=0644 || p=0755
+		set_perm 0 0 $p "$1"
+	fi
+	
+	return 0
+}
+
+# INIT SCRIPT
+# --------------------------------------------------------------------------------
+# I: INITIALIZE your library
+
+# Rename this function with format init_YOUR_LIBRARY_NAME as it will be run by aslib loader after
+# all the libraries are loaded. 
+# e.g.
+# your library					proper function init name	 
+# func.DUMMY_LIBRARY.aslib ->	init_DUMMY_LIBRARY(){}
+#
+
+init_recovery_tools_permissions(){
+	return 0
+}
+
+# ASLIB RETURN CONFIRMATION
+# --------------------------------------------------------------------------------
+# 
+printf "SCRIPT LOADED $AS_SCRIPT\n"

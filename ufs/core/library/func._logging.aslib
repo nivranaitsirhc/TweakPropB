@@ -1,0 +1,229 @@
+#!/sbin/sh
+#
+#	aslib library
+#
+#	CodRLabworks
+#	CodRCA aslib Library Template v4
+#
+
+# LIBRARY DESCRIPTION
+# --------------------------------------------------------------------------------
+# I: ASLIB Logging Logging Mechanism 
+#
+#
+
+# ----------------------------- ASLIB LIBRARY HEADER -----------------------------
+# ASLIB CLEAR
+# --------------------------------------------------------------------------------
+# I: Add The Paths of the files or directory that will be cleared by ASLIB_CLEAR separated by a double dot
+[ -z "$ASLIB_CLEAR" ] && {
+	# aslib clear is not defined by aslib loader may be obsolete or library is sourced directly
+	printf "I: Lib $AS_SCRIPT is sourced directly"
+}
+ASLIB_CLEAR "YOUR_PATH"
+# ---------------------------------- END HEADER ----------------------------------
+
+# INIT VARIABLES
+# --------------------------------------------------------------------------------
+# I: INIT your variables here. avoid exporting your variables here. add it in the
+#    aslib loader.
+
+
+# FUNCTIONS
+# --------------------------------------------------------------------------------
+# I: DEFINE your functions
+
+##### ASLIB.ALINIT
+alLInit() {
+	is_enabled al_init && {
+		ColdLog "W: ASLIB alLInit: aslib logging has already been initialized!"
+		return 1
+	}
+	
+	# remount /sdcard if not mounted
+	! is_mounted /sdcard rw && \
+	remount_mountpoint /sdcard rw
+	
+
+	# create log directory
+	[ ! -z "$aslib_log_type" ] && {
+		case $aslib_log_type in
+			flash|flashmode|flashlog)
+				logpath=$aslib_logpath/flash
+			;;
+			upgrade|upgrademode|upgradelog|ota)
+				logpath=$aslib_logpath/ota
+			;;
+			custom)
+				logpath=$aslib_logpath/custom
+			;;
+			*)	
+				logpath=$aslib_logpath/$aslib_log_type
+				ColdLog "D: ASLIB Custom logtype set, $aslib_log_type"
+			;;
+		esac
+		# create required folder
+		[ ! -e $logpath ] && {
+			$ColdLog "I: ASLIB alLInit: creating $logpath"
+			install -d $logpath
+			[ ! -e $logpath ] && $ColdLog "I: ASLIB alLInit: FAILED in creating DIR"
+		}
+		$ColdLog "I: ASLIB alLInit: logpath set to $logpath"
+	}
+	
+	# Set log name
+	[ -n "$aslib_log_logname" ] && {
+		$ColdLog "I: ASLIB alLinit: logname set to $aslib_log_logname"
+		al_name=$aslib_log_logname
+	} || {
+		$ColdLog "W: ASLIB alLinit: alLinit run without defining aslib_log_name, defualting to aslog"
+		al_name=aslog
+	}
+	
+	# Setup log file name
+	logfile=$logpath/$al_name'_'$(date "+%Y-%m-%d_%H-%M-%S").log
+	$ColdLog "I: ASLIB alLInit: logfile set to $logfile"
+	
+	[ -e $logfile ] && {
+		$ColdLog "W: ASLIB alLInit: found existing logfile with the same name, the world must be crazy!"
+		$ColdLog "D: ASLIB alLInit: removing duplicate logfile.."
+		rm -f $logfile
+	}
+	
+	# COLD_LOG TURN-OVER			
+	(cat "$TMP_LOG" >> $logfile)	# COPY TMP_LOG TO ALLOG
+	ColdLog=alLog					# TRANSITION COLD_LOG TO ALLOG
+	
+	al_init=1
+}
+
+##### ASLIB.ALSET
+alLSet() {
+	[ -z "$1" ] && {
+		# detect inputs
+		case $al_enable in
+		1|1|enable) al_enable=1
+			$ColdLog "I: ASLIB alLSet: log enabled"
+			;;
+		0|0|disable) al_enable=0
+			$ColdLog "I: ASLIB alLSet: log disabled"
+			;;
+		esac
+	} || \
+	case $1 in
+		name|NAME|Name)
+			al_name="$2"
+			$ColdLog "I: ASLIB allSet: logname set to $2"
+		;;
+		enable|ENABLE|Enable|1|true)
+			case $2 in
+			True|true|1)
+				al_enable=1
+				$ColdLog "I: ASLIB alLSet: log enabled"
+				;;
+			False|false|0)
+				al_enable=0
+				$ColdLog "I: ASLIB alLSet: log disabled"
+				;;
+			esac
+		;;
+
+		type|TYPE|Type)
+			case $2 in
+				flash|flashlogs|flashmode)
+					$ColdLog "I: ASLIB alLSet: type set to $2"
+					aslib_log_type=flash
+					;;
+				up|upgrade|upgrademode)
+					$ColdLog "I: ASLIB alLSet: type set to $2"
+					aslib_log_type=upgrade
+					;;
+				*)
+					$ColdLog "I: ASLIB alLSet: type set to $2"
+					aslib_log_type="$2"
+					;;
+			esac
+		;;
+		level|LEVEL|Level)
+			case $2 in
+				1)	LT1=alLog;		LT2=alLog;		LT3=alLog;		LT4=ColdLog
+					$ColdLog "I: ASLIB alLSet: log set to 1"
+				;;
+				2)	LT1=alLog;		LT2=ColdLog;	LT3=ColdLog;	LT4=ColdLog
+					$ColdLog "I: ASLIB alLSet: log set to 2"
+				;;
+				3)	LT1=alLog;		LT2=alLog;		LT3=alLog;		LT4=ColdLog
+					$ColdLog "I: ASLIB alLSet: log set to 3"
+				;;
+				4)	LT1=alLog;		LT2=alLog;		LT3=alLog;		LT4=alLog
+					flush_logs=false
+					$ColdLog "I: ASLIB alLSet: log set to 4"
+				;;
+				*)	LT1=alLog;		LT2=alLog;		LT3=alLog;		LT4=ColdLog
+					$ColdLog "I: ASLIB alLSet: log set to 1 DEFAULT"
+				;;
+			esac
+		;;
+	esac
+	return 0
+}
+
+##### ASLIB.ALLOG
+alLog() {
+	[ "$al_enable" != 1 ] && return 0
+
+	[ -n "$1" ] && {
+		[ "$1" != "ui_print" ] && {
+			IN="$*"
+			printf "$IN\n"
+		} || {
+			IN="$2"
+		}
+	} || read IN
+
+	[ -n "$IN" ] && {
+		DATE="$(date "+%H:%M:%S")"
+		echo "$DATE $IN" >> $logfile
+		echo "$DATE $IN" >> $TMP_LOG
+	}
+}
+
+##### ASLIB.COLD_LOG
+ColdLog() {
+	echo "$(date "+%H:%M:%S") $1" >> $TMP_LOG
+	printf "$1\n"
+}
+
+##### ASLIB.TMP_LOG
+INIT_TMP_LOG() {
+	export TMP_LOG=/sdcard/logs/.devlogs/tmp_log
+	# Create Directory
+	[ ! -e "$TMP_LOG" ] && {
+		install -d /sdcard/logs/.devlogs
+		export INIT_TMP_LOG=true
+		echo $'\n'"TMP_LOG INIT BY ASLIB_LOGGING"$'\n' > $TMP_LOG
+	}
+}
+
+
+# INIT SCRIPT
+# --------------------------------------------------------------------------------
+# I: INITIALIZE your library
+
+# Rename this function with format init_YOUR_LIBRARY_NAME as it will be run by aslib loader after
+# all the libraries are loaded. 
+# e.g.
+# your library					proper function init name	 
+# func.DUMMY_LIBRARY.aslib ->	init_DUMMY_LIBRARY(){}
+#
+
+init__logging(){
+	# START TMP_LOG
+	if [ -z "$INIT_TMP_LOG" ] && [ "$INIT_TMP_LOG" != "true" ];then  INIT_TMP_LOG;fi
+	return 0
+}
+
+# ASLIB RETURN CONFIRMATION
+# --------------------------------------------------------------------------------
+# 
+printf "SCRIPT LOADED $AS_SCRIPT\n"

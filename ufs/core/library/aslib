@@ -1,6 +1,6 @@
 #!/sbin/sh
 #
-#   uniFlashScript
+#	aslib Library
 #
 #   CodRLabworks
 #   CodRCA : Christian Arvin
@@ -15,8 +15,11 @@
 #
 
 # PRE-INIT
-# ___________________________________________________________________________________________________________ <- 110 Char
-#
+# --------------------------------------------------------------------------------
+# I: PRE-INIT here
+
+# set ulimit
+ulimit -s 65536
 
 export aslib_version=1000
 export aslib_funcbasic="ui_print set_perm set_progress progress get_prop set_file_prop";
@@ -26,9 +29,8 @@ export aslib_logpath=/sdcard/logs/ufs
 
 
 # VARIABLE CONFIGS
-# ___________________________________________________________________________________________________________ <- 110 Char
-#
-#
+# --------------------------------------------------------------------------------
+# I: DEFINE your variable configs here
 
 # ############################ # This Configs are essential for aslib function operations.
 #     CONFIG DEFINATION        # You can create your config file and source it and use the defs found here.
@@ -72,13 +74,9 @@ export pc_stat_sd1=0                    # autogen : 0 if sdcard1 has no errors
 export pc_stat_tmp=0                    # autogen : 0 if tmp has no errors
 
 
-# VARIABLE DECLARATION  # ! ESSENTIAL VALUE DO NOT MODIFY !	
-# ___________________________________________________________________________________________________________ <- 110 Char
-#
-#
-
-export wipe_list=
-export file_list=
+# VARIABLE DECLARATION 
+# --------------------------------------------------------------------------------
+# I: ESSENTIAL variables ! DO NOT MODIFY !
 
 export SOURCEDIR=
 export SOURCEFS=
@@ -87,10 +85,10 @@ export SOURCESYS=
 
 # ASLIB COLD_LOG CONFIGS
 export flush_logs=1
-export cold_log=cold_log
+export ColdLog=ColdLog
 
 # ASLIB GET_PROP CONFIGS
-PROPFILES="/system/default.prop /system/build.prop /data/local.prop /default.prop /build.prop"
+export PROPFILES="/system/default.prop /system/build.prop /data/local.prop /default.prop /build.prop"
 
 # ASLIB DEF_CONFIG_CHECK
 loc_of_config=                   # MUST BE DEFINED BY INSTALLER SH or def_config_check() will be disabled
@@ -113,6 +111,7 @@ aslib_req
 aslib_asWipelist
 aslib_asAddon
 aslib_asInstall
+aslib_asInstall_ow
 aslib_asExtract
 aslib_log_type
 aslib_log_level
@@ -135,10 +134,10 @@ last_config_loaded=aslib_config
 # !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! # You can config each value on your script after aslib has been loaded.
 
 # CRUCIAL CONFIGS FOR ALLOG
-export LT1=cold_log	# ! DO NOT MODITY ! Logging Tag-1 cold_log means disabled
-export LT2=cold_log	# ! DO NOT MODITY ! Logging Tag-2 cold_log means disabled
-export LT3=cold_log	# ! DO NOT MODITY ! Logging Tag-3 cold_log means disabled
-export LT4=cold_log	# ! DO NOT MODITY ! Logging Tag-4 cold_log means disabled
+export LT1=ColdLog	# ! DO NOT MODITY ! Logging Tag-1 ColdLog means disabled
+export LT2=ColdLog	# ! DO NOT MODITY ! Logging Tag-2 ColdLog means disabled
+export LT3=ColdLog	# ! DO NOT MODITY ! Logging Tag-3 ColdLog means disabled
+export LT4=ColdLog	# ! DO NOT MODITY ! Logging Tag-4 ColdLog means disabled
 
 
 
@@ -153,48 +152,114 @@ export LT4=cold_log	# ! DO NOT MODITY ! Logging Tag-4 cold_log means disabled
 
 
 # FUNCTIONS
-# ___________________________________________________________________________________________________________ <- 110 Char
-#
-##### ASLIB.COLD_LOG
-cold_log() {
-	TMP_LOG="${TMP_LOG}"$'\n'"$(date "+%H:%M:%S") $1"
+# --------------------------------------------------------------------------------
+# I: ASLIB_LOADER functions
+
+##### ASLIB_CLEAR
+ASLIB_CLEAR(){
+	# I: clears files and directory
+	local SL="/:/system:/sdcard:/sdcard1:/data:/tmp"
+	if [ "$1" == "CLEAR" ];then
+		$ColdLog "I: ASLIB_LOADER ASLIB_CLEAR: Clearing..."
+		local IFS=$':'
+		for L in $ASLIB_CLEAR;do
+			[ -e "$L" ] && {
+				# perform removal and strictly scrutinize the paths we don't want a nuclear disaster.
+				local T=false
+				for S in $SL;do [[ "$S" == "$L" || "$S" == "$L/" || "$S" == "$L//" ]] && T=true;done
+				[ "$T" == "false" ] && {
+					rm -rf "$L"
+				}	
+			}
+		done
+	else
+		[ "$1" != "YOUR_PATH" ] && {
+			ASLIB_CLEAR="$ASLIB_CLEAR:$@"
+		}
+	fi
+	
+	return 0
+}
+
+##### ASLIB_LOADLIB
+ASLIB_LOADLIB(){
+	$ColdLog "I: ASLIB LOADER: Loading Libraries"
+	local LM=;L_LIST=;
+	for func in $(find $ASLIB_LIBDP -type f -name func.*.aslib);do
+		local AS_SCRIPT=`basename $func`;local LIBNAME="$(echo $AS_SCRIPT | cut -d. -f 2-2)";L_LIST="$L_LIST$LIBNAME"$'\n'
+		[ -e "$func" ] && \
+		command . $func && \
+		LM="LOADED" || {
+		LM="LIBRARY UNLOADABLE"
+		}
+		$ColdLog "I: ASLIB LOADER: LOADING $(printf "%-35s %s\n" "$LIBNAME..." "$LM")"
+	done
+	
+	$ColdLog "I: ASLIB LOADER: Initializing libraries"
+	for L in $L_LIST;do
+		init_$L >/dev/null 2>&1 || echo "Warning no properly defined init function, check $L"
+	done
+}
+
+##### COLDLOG
+ColdLog() {
+	#TMP_LOG="${TMP_LOG}"$'\n'"$(date "+%H:%M:%S") $1"
+	echo "$(date "+%H:%M:%S") $1" >> $TMP_LOG
 	printf "$1\n"
 }
 
-cold_log=cold_log
-[ -z "$TMP_LOG" ] && TMP_LOG="TMP_LOG INIT BY ASLIB"
-
-# PRE_INIT
-# ___________________________________________________________________________________________________________ <- 110 Char
-#
-
-# VERIFY LIBRARIES
-[ -z "$LIBS" ] && {
-	LIBS=$(dirname $0)
+##### TMP_LOG
+INIT_TMP_LOG() {
+	export TMP_LOG=/sdcard/logs/.devlogs/tmp_log
+	# Create Directory
+	[ ! -e "$TMP_LOG" ] && {
+		install -d /sdcard/logs/.devlogs
+		export INIT_TMP_LOG=true
+		echo $'\n'"TMP_LOG INIT BY UPDATE-BINARY"$'\n' > $TMP_LOG
+	}
 }
 
-# LOAD ALL FUNCTIONS
-cold_log "I: ASLIB LOADING LIBRARIES"
-for func in $(ls $LIBS/func.*.aslib);do
-	(eval . $func 1>/dev/null) && \
-	. $func && \
-	cold_log "I: ASLIB LOADED $func" || \
-	cold_log "E: FUNCTION UNLOADABLE"
-done
+# START TMP_LOG
+[[ -z "$INIT_TMP_LOG" && "$INIT_TMP_LOG" != "true" ]] && INIT_TMP_LOG;
+
 
 # INIT
-# ___________________________________________________________________________________________________________ <- 110 Char
-#
+# --------------------------------------------------------------------------------
+# I: INITIALIZE aslib loader
+
+# Init ASLIB_CLEAR
+export ASLIB_CLEAR="INIT"
+
+# Init ColdLog
+export ColdLog=ColdLog
+
+# ASLIB LOAD LIBRARY DIRECTORY PATH
+# I: Seek for aslib directory, ASLIB_LIBDP need to be an exported variable defined by sourcing this loader.
+#    It is the path where this loader resides and all the included library.
+[[ -z "$ASLIB_LIBDP" || ! -d "$ASLIB_LIBDP" ]] && {
+	$ColdLog "E: ASLIB LOADER: ASLIB_LIBDP is undefined, trying to locate aslib parent path"
+	local _0_DIR_NAME="$(dirname $0)"
+	[ -e "$_0_DIR_NAME/aslib" ] && {
+		export ASLIB_LIBDP="$_0_DIR_NAME"
+	} || {
+		printf "ASLIB LOADER ERROR: Unable to find loader PATH, $ASLIB_LIBDP is invalid"
+		exit 1
+	}
+}
+
+# LOAD ALL LIBRARY
+ASLIB_LOADLIB
+
 
 # update_binary var check -AslibUpdateBinary- or aub
 # SOURCEDIR, BINARIES, INSTALLER, ZIP
 [[ -z "$SOURCEDIR" && -z "$BINARIES" && -z "$INSTALLER" && -z "$ZIP" ]] && {
-	$cold_log "I: ASLIB Were probably running in ota_mode"
+	$ColdLog "I: ASLIB LOADER: Were probably running in ota_mode"
 	aub=0
 } || {
-	$cold_log "I: ASLIB Were probably running in flash_mode"
+	$ColdLog "I: ASLIB LOADER: Were probably running in flash_mode"
 	aub=1
 }
 
 ##### INFORM USER THAT ASLIB IS LOADED
-$cold_log "I: ASLIB aslib Loaded.."
+$ColdLog "I: ASLIB LOADER: FINISHED SOURCING ASLIB LIBRARY"

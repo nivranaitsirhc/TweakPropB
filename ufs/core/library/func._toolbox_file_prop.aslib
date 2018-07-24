@@ -1,0 +1,110 @@
+#!/sbin/sh
+#
+#	aslib library
+#
+#	CodRLabworks
+#	CodRCA aslib Library Template v4
+#
+
+# LIBRARY DESCRIPTION
+# --------------------------------------------------------------------------------
+# I: TOOLBOX SUB File Prop, used for setting defined properties inside a file
+#
+#
+
+# ----------------------------- ASLIB LIBRARY HEADER -----------------------------
+# ASLIB CLEAR
+# --------------------------------------------------------------------------------
+# I: Add The Paths of the files or directory that will be cleared by ASLIB_CLEAR separated by a double dot
+[ -z "$ASLIB_CLEAR" ] && {
+	# aslib clear is not defined by aslib loader may be obsolete or library is sourced directly
+	printf "I: Lib $AS_SCRIPT is sourced directly"
+}
+ASLIB_CLEAR "YOUR_PATH"
+# ---------------------------------- END HEADER ----------------------------------
+
+# INIT VARIABLES
+# --------------------------------------------------------------------------------
+# I: INIT your variables here. avoid exporting your variables here. add it in the
+#    aslib loader.
+
+[ -z "$PROPFILES" ] && \
+export PROPFILES=;
+
+# FUNCTIONS
+# --------------------------------------------------------------------------------
+# I: DEFINE your functions
+
+##### ASLIB.ADD.GET_PROP
+get_prop() {
+	# check known .prop files using get_file_prop
+	for f in $PROPFILES; do
+		[ -e "$f" ] && {
+			prop="$(get_file_prop "$f" "$1")"
+			[ -n "$prop" ] && break #if an entry has been found, break out of the loop
+		}
+	done
+	# if prop is still empty
+	# try to use recovery's built-in getprop method
+	# otherwise output current result , not recommended if using a custom recovery.
+	[ -z "$prop" ] && {
+		getprop "$1" | cut -c1-
+		$LT3 "I: ASLIB get_prop: Cannot determine the actual get prop."
+	} || printf "$prop"
+}
+
+##### ASLIB.ADD.GET_FILE_PROP
+get_file_prop() {
+	local pf=;local pv=;
+	if [ -f "$1" ];then
+		pf="$1";pv="$2"
+	elif [ -f "$2" ];then
+		pf="$2";pv="$1"
+	else
+		$LT3 "E: ASLIB get_file_prop: No valid file"
+		return 1
+	fi
+	grep -m 1 "^$pv=" "$pf" | cut -d= -f2
+}
+
+##### ASLIB.ADD.SET_FILE_PROP
+set_file_prop() {
+	local pf=;local pv=;local pn=;
+	if [ -f "$1" ];then
+		pf=$1;pv=$2;pn=$3
+	elif [ -f "$2" ];then
+		pf=$2;pv=$1;pn=$3
+	elif [ -f "$3" ];then
+		pf=$3;pv=$1;pn=$2
+	else
+		$LT2   "E: ASLIB set_file_prop: No valid file"
+		return 1
+	fi
+	# change $var's value if $var present in the file
+	grep -q -m 1 "$pv=" "$pf" && (sed "s/^$pv=.*$/$pv=$pn/" -i "$pf")
+	$LT2 "I: ASLIB set_file_prop: $pf <- $pv to $pn"
+}
+
+# INIT SCRIPT
+# --------------------------------------------------------------------------------
+# I: INITIALIZE your library
+
+# Rename this function with format init_YOUR_LIBRARY_NAME as it will be run by aslib loader after
+# all the libraries are loaded. 
+# e.g.
+# your library					proper function init name	 
+# func.DUMMY_LIBRARY.aslib ->	init_DUMMY_LIBRARY(){}
+#
+
+init__toolbox_file_prop(){
+	# check if PROPFILES is define
+	[ -z "$PROPFILES" ] && \
+	PROPFILES="/system/default.prop /system/build.prop /data/local.prop /default.prop /build.prop"
+	return 0
+}
+
+
+# ASLIB RETURN CONFIRMATION
+# --------------------------------------------------------------------------------
+# 
+printf "SCRIPT LOADED $AS_SCRIPT\n"

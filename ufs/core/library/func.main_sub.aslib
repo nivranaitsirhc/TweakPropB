@@ -61,3 +61,12 @@ extract_zip() {
 	} || return 0
 }
 
+install_system_app(){
+	
+	
+	
+}
+
+install_lib(){
+	
+}

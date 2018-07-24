@@ -1,4 +1,4 @@
-#!/sbin/sh
+#!/sbin/ash
 #
 #	uniFlashScript
 #
@@ -27,15 +27,15 @@
 #############################
 # LOAD INSTALL_INIT			#
 #############################
-$cold_log "I: INSTALLER.SH: RUNNING install_init"
-install_init || $cold_log "E: INSTALLER.SH: install_init exited with error $?"
+$ColdLog "I: INSTALLER.SH: RUNNING install_init"
+install_init || $ColdLog "E: INSTALLER.SH: install_init exited with error $?"
 
 # print header message
 # ----------------------------------------------- <- 50 char
 #
 is_enabled print_header_enabled && {
 	print_header;
-} || $cold_log "I: INSTALLER.SH: print_header disabled"
+} || $ColdLog "I: INSTALLER.SH: print_header disabled"
 
 
 # MOUNT USER SELECTED MOUNTPOINTS
@@ -45,7 +45,7 @@ is_enabled print_header_enabled && {
 	for MOUNT in $mountpoints; do
 		remount_mountpoint /$MOUNT rw
 	done
-} || $cold_log "I: INSTALLER.SH: No defined mountpoints in user config"
+} || $ColdLog "I: INSTALLER.SH: No defined mountpoints in user config"
 
 ##### PRE-INIT ASLIB VERSION
 # ------------------------------------------------------------------- <- 70 char
@@ -102,7 +102,7 @@ cur_android_version=$(get_prop ro.build.version.sdk);	# GET DEVICE SDK
 				abort $E_SDM
 			fi
 		;;
-		*) $cold_log "W: INSTALLER.SH: Unknown req_force value $req_force"
+		*) $ColdLog "W: INSTALLER.SH: Unknown req_force value $req_force"
 		;;
 	esac
 }
@@ -136,13 +136,13 @@ is_enabled extract_system && {
 
 set_progress 0.25
 is_enabled extract_folder && {
-	$cold_log "I: INSTALLER.SH: extracting user folders.."
+	$ColdLog "I: INSTALLER.SH: extracting user folders.."
 	[ ! -z "$user_folders" ] && {
 		for FOLDERS in $user_folders; do
-			$cold_log "I: INSTALLER.SH: extracting -> $FOLDER"
+			$ColdLog "I: INSTALLER.SH: extracting -> $FOLDER"
 			extract_zip "$ZIP" "$FOLDER/*" "$SOURCEFS"
 		done
-	} || $cold_log "W: INSTALLER.SH: no defined user folders"
+	} || $ColdLog "W: INSTALLER.SH: no defined user folders"
 }
 
 
@@ -166,27 +166,27 @@ is_enabled calculatespace && {
 	wipe_size=0;tmp_size=0;install_size=0;wipe_file_count=0;
 
 
-	$cold_log "I: INSTALLER.SH: Calculating system INSTALL_SIZE"
+	$ColdLog "I: INSTALLER.SH: Calculating system INSTALL_SIZE"
 	install_size=$(du -ck $SOURCESYS | tail -n 1 | awk '{ print $1 }')
 
-	$cold_log "I: INSTALLER.SH: Calculating system WIPE_SIZE"
-	for TARGET in $wipe_list; do
+	$ColdLog "I: INSTALLER.SH: Calculating system WIPE_SIZE"
+	for TARGET in $(cat $wipe_list); do
 		[ -e /system/$TARGET ] && {
 			tmp_size=$(du -ck /system/$TARGET | tail -n 1 | awk '{ print $1 }')
 			wipe_size=$(($tmp_size+$wipe_size))
 			wipe_file_count=$((++wipe_file_count))
-			$cold_log "D: INSTALLER.SH: SIZE:$(printf "%-8s %s\n" $tmp_size "<- /system/$TARGET")"
+			$ColdLog "D: INSTALLER.SH: SIZE:$(printf "%-8s %s\n" $tmp_size "<- /system/$TARGET")"
 		}
 	done
 
-	$cold_log "I: INSTALLER.SH: Total system install size -> $install_size"
-	$cold_log "I: INSTALLER.SH: Total system wipe size    -> $wipe_size"
-	$cold_log "I: INSTALLER.SH: Total system free size    -> $pc_free_sys"
+	$ColdLog "I: INSTALLER.SH: Total system install size -> $install_size"
+	$ColdLog "I: INSTALLER.SH: Total system wipe size    -> $wipe_size"
+	$ColdLog "I: INSTALLER.SH: Total system free size    -> $pc_free_sys"
 
 	[ "$install_size" -gt "$(($pc_free_sys + $wipe_size))" ] && {
 		ui_print "E: INSTALLER.SH: Install size is to large for free system space."
 		exit 1
-	} || $cold_log "I: INSTALLER.SH: Great! system has enough space for installation."
+	} || $ColdLog "I: INSTALLER.SH: Great! system has enough space for installation."
 }
 
 # ##########################################################################################
@@ -231,8 +231,8 @@ set_progress 0.69
 #############################
 # LOAD INSTALL_MAIN			#
 #############################
-$cold_log "I: INSTALLER.SH: RUNNING install_main"
-install_main || $cold_log "E: INSTALLER.SH: install_main exited with error $?"
+$ColdLog "I: INSTALLER.SH: RUNNING install_main"
+install_main || $ColdLog "E: INSTALLER.SH: install_main exited with error $?"
 
 
 # ##########################################################################################
@@ -258,10 +258,10 @@ set_progress 0.80
 #
 ( is_enabled extract_system || is_enabled extract_folder ) && {
 	ui_print " - Cleaning up"
-	rm -rf "$SOURCESYS" || $cold_log "W: INSTALLER.SH: Errors were found during $SOURCESYS cleaning $?"
+	rm -rf "$SOURCESYS" || $ColdLog "W: INSTALLER.SH: Errors were found during $SOURCESYS cleaning $?"
 	[ -e "$SOURCESYS" ] && {
-		$cold_log "W: INSTALLER.SH: Failed to remove $SOURCESYS"
-		$cold_log "I: INSTALLER.SH: Manually remove it on reboot"
+		$ColdLog "W: INSTALLER.SH: Failed to remove $SOURCESYS"
+		$ColdLog "I: INSTALLER.SH: Manually remove it on reboot"
 	}
 }
 
@@ -270,7 +270,7 @@ set_progress 0.94
 # ----------------------------------------------- <- 50 char
 is_mounted /system && {
 	ui_print " - Un-mounting system"
-	umount /system || $cold_log "W: INSTALLER.SH: Errors were found during system unmount $?"
+	umount /system || $ColdLog "W: INSTALLER.SH: Errors were found during system unmount $?"
 }
 set_progress 1.0
 # DONE
@@ -286,5 +286,5 @@ sleep 3
 #############################
 # LOAD INSTALL_POST			#
 #############################
-$cold_log "I: INSTALLER.SH: RUNNING install_post"
-install_post || $cold_log "W: INSTALLER.SH: install_post exited with error $?"
+$ColdLog "I: INSTALLER.SH: RUNNING install_post"
+install_post || $ColdLog "W: INSTALLER.SH: install_post exited with error $?"

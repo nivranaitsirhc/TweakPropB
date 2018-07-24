@@ -45,6 +45,7 @@ export LIBS=/tmp/core/library
 export INSTALLER=/tmp/core/installer.sh
 export INIT=/tmp/core/init.sh
 export SYSTEM=/system
+export BINARCH=arm
 bb=$BINARIES/busybox-arm
 
 # Functions
@@ -54,36 +55,56 @@ bb=$BINARIES/busybox-arm
 ui_print() {
 	echo -n -e "ui_print $1\n" >> /proc/self/fd/$OUTFD;
 	echo -n -e "ui_print\n"    >> /proc/self/fd/$OUTFD;
-	TMP_LOG="${TMP_LOG}"$'\n'"COLD_LOG $1"
+	echo "COLD_LOG $1" >> $TMP_LOG;
+	#TMP_LOG="${TMP_LOG}"$'\n'"COLD_LOG $1"
 }
 
-cold_log() {
-	TMP_LOG="${TMP_LOG}"$'\n'"COLD_LOG $1"
+ColdLog() {
+	echo "COLD_LOG $1" >> $TMP_LOG
+	#TMP_LOG="${TMP_LOG}"$'\n'"COLD_LOG $1"
 	printf "$1\n"
 }
 
 exit_() {
 	(sleep 1;kill_tail_recovery)
+	CLEAR_TMP_LOG;
 	exit $1
 }
 
 fd_log(){
-	devlogs=/sdcard/logs/devlogs
+	devlogs=/sdcard/logs/.devlogs
 	[ ! -e $devlogs ] && install -d $devlogs
-	(printf $'\n\n\n\n'"BEGIN RECOVERY TAIL LOGS"$'\n\n';tail -f /tmp/recovery.log >> $devlogs/recovery.log)&	
+	(printf $'\n\n\n\n'"BEGIN RECOVERY TAIL LOGS"$'\n\n';tail -fq /tmp/recovery.log >> $devlogs/recovery.log & echo $! >/tmp/TLPID)&	
 }
 
 kill_tail_recovery(){
-	kill $(ps | grep "tail" | grep "recovery.log" | awk '{ print $1 }') || \
+	PID=$(cat /tmp/TLPID)
+	kill -SIGTERM $PID || \
 	echo "Error. Unable to kill tail recovery, Manually Reboot the device."
 }
 
-export TMP_LOG="TMP_LOG INIT BY UPDATE-BINARY"
-export cold_log=cold_log
+INIT_TMP_LOG() {
+	export TMP_LOG=/sdcard/logs/.devlogs/tmp_log
+	# Create Directory
+	[ ! -e "$TMP_LOG" ] && {
+		install -d /sdcard/logs/.devlogs
+		export INIT_TMP_LOG=true
+		echo $'\n'"TMP_LOG INIT BY UPDATE-BINARY"$'\n' > $TMP_LOG
+	}
+}
+
+CLEAR_TMP_LOG() {
+	[ -e $TMP_LOG ] && rm -r $TMP_LOG
+}
+
+export ColdLog=ColdLog
 
 # Pre-Initialization
 # _______________________________________________________________________________________________________
 #
+
+# init tmp_log
+INIT_TMP_LOG;
 
 # START FD_LOG
 fd_log;
@@ -96,13 +117,15 @@ case "$(uname -m)" in
 		;;
 	*ar*)
 		{(getprop ro.product.cpu.abilist | grep v8) && \
-		export BINARCH="armv8";} || \
+		export BINARCH="arm64";} || \
 		{(getprop ro.product.cpu.abilist | grep v7) && \
-		export BINARCH="armv7";} || \
+		export BINARCH="arm";} || \
 		export BINARCH="arm"
 		;;
 	*86*|*64)
-		export BINARCH="x86_64"
+		{(getprop ro.product.cpu.abilist | grep x86_64) && \
+		export BINARCH="x86_64";} || \
+		export BINARCH="x86"
 		;;
 esac
 
@@ -111,8 +134,8 @@ ufsBIN="busybox zip lzmadec xzdec"
 eval bb="$BINARIES/busybox-$BINARCH"
 eval l="$BINARIES"
 
-cold_log "I: UPDATE-BINARY: BINARCH is $BINARCH"
-cold_log "I: UPDATE-BINARY: Busybox set to $bb"
+ColdLog "I: UPDATE-BINARY: BINARCH is $BINARCH"
+ColdLog "I: UPDATE-BINARY: Busybox set to $bb"
 # Post-Initialization
 # _______________________________________________________________________________________________________
 #
@@ -123,13 +146,26 @@ if [ ! -f "/sbin/unzip" ]; then
 	exit 1
 fi
 
-if [ -e $COREDIR ];then
-	rm -rf $COREDIR
-fi
-# unzip core
-unzip -o "$ZIP" "core/*" -d "/tmp"
+# clean COREDIR remnants of past install
+[ -e "$COREDIR" ] && rm -rf "$COREDIR"
 
+# get the unzip list
+unzip -o "$ZIP" "core/unzip.list" -d "/tmp"
+
+[ -e "/tmp/core/unzip.list" ] && {
+	for L in `cat /tmp/core/unzip.list` "bin/busybox-$BINARCH";do
+		unzip -o "$ZIP" "core/$L" -d "/tmp"
+		[ ! -e "/tmp/$L" ] && ColdLog "E: UPDATE-BINARY: unable to extract $L"
+	done
+} || {
+	# default unzip core
+	unzip -o "$ZIP" "core/*" -d "/tmp"
+}
+
+# create the binaries directory
 install -d "$BINARIES"
+
+
 # Main
 # _______________________________________________________________________________________________________
 #
@@ -137,7 +173,7 @@ install -d "$BINARIES"
 # chmod binaries
 for bin in $ufsBIN; do
 	[ ! -e "$BINARIES/$bin-$BINARCH" ] && \
-	cold_log "E: UPDATE-BINARY: $bin-$BINARCH does not exist, maybe not supported yet by your arch." || {
+	ColdLog "E: UPDATE-BINARY: $bin-$BINARCH does not exist, maybe not supported yet by your arch." || {
 		chmod +x "$BINARIES/$bin-$BINARCH"
 		[[ "$bin" != "busybox" && -e "$BINARIES/$bin-$BINARCH" ]] && {
 		  ! ln -sf "$BINARIES/$bin-$BINARCH" "$BINARIES/$bin" && {

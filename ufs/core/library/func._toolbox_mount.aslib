@@ -1,0 +1,122 @@
+#!/sbin/sh
+#
+#	aslib library
+#
+#	CodRLabworks
+#	CodRCA aslib Library Template v4
+#
+
+# LIBRARY DESCRIPTION
+# --------------------------------------------------------------------------------
+# I: TOOLBOX SUB Mount, functions for mounting
+#
+#
+
+# ----------------------------- ASLIB LIBRARY HEADER -----------------------------
+# ASLIB CLEAR
+# --------------------------------------------------------------------------------
+# I: Add The Paths of the files or directory that will be cleared by ASLIB_CLEAR separated by a double dot
+[ -z "$ASLIB_CLEAR" ] && {
+	# aslib clear is not defined by aslib loader may be obsolete or library is sourced directly
+	printf "I: Lib $AS_SCRIPT is sourced directly"
+}
+ASLIB_CLEAR "YOUR_PATH"
+# ---------------------------------- END HEADER ----------------------------------
+
+# INIT VARIABLES
+# --------------------------------------------------------------------------------
+# I: INIT your variables here. avoid exporting your variables here. add it in the
+#    aslib loader.
+
+
+# FUNCTIONS
+# --------------------------------------------------------------------------------
+# I: DEFINE your functions
+
+##### ASLIB.SUB.TOOLBOX_MOUNT
+toolbox_mount() {
+	$LT4 "D: ASLIB exec toolbox_mount $1 $2"
+	# default to READ_WRITE
+	local RW=rw
+	[ ! -z "$2" ] && RW=$2
+	
+	$LT4 "D: ASLIB toolbox_mount: mounting using using /etc/fstab entry"
+
+	local DEV=;local POINT=;local FS=;
+	
+	for i in `cat /etc/fstab | grep -m 1 "$1"`; do
+		if [ -z "$POINT" ]; then POINT=$i;elif [ -z "$FS" ]; then FS=$i;elif [ -z "$DEV" ]; then DEV=$i;break;fi
+	done
+	
+	$LT4 "D: ASLIB toolbox_mount: exec mount -t $FS -o $RW $DEV $POINT"
+	! mount -t $FS -o $RW $DEV $POINT               >/dev/null 2>&1 && \
+	$LT4 "D: ASLIB toolbox_mount: exec mount -t $FS -o $RW,remount $DEV $POINT" && \
+	! mount -t $FS -o $RW,remount $DEV $POINT       >/dev/null 2>&1 || return 0
+	
+	
+	$LT4 "D: ASLIB toolbox_mount: mounting using using /etc/recovery.fstab"
+	
+	DEV=;POINT=;FS=;
+	
+	for i in `cat /etc/recovery.fstab | grep -m 1 "$1"`; do
+		if [ -z "$POINT" ]; then POINT=$i;elif [ -z "$FS" ]; then FS=$i;elif [ -z "$DEV" ]; then DEV=$i;break;fi
+	done
+	
+	if [ "$FS" = "emmc" ]; then
+		$LT4 "D: ASLIB toolbox_mount: exec mount -t ext4 -o $RW $DEV $POINT"
+		! mount -t ext4 -o $RW $DEV $POINT            >/dev/null 2>&1 && \
+		$LT4 "D: ASLIB toolbox_mount: exec mount -t ext4 -o $RW,remount $DEV $POINT" && \
+		! mount -t ext4 -o $RW,remount $DEV $POINT    >/dev/null 2>&1 && \
+		$LT4 "D: ASLIB toolbox_mount: exec mount -t f2fs -o $RW $DEV $POINT" && \
+		! mount -t f2fs -o $RW $DEV $POINT            >/dev/null 2>&1 && \
+		$LT4 "D: ASLIB toolbox_mount: exec mount -t f2fs -o $RW,remount $DEV $POINT" && \
+		! mount -t f2fs -o $RW,remount $DEV $POINT    >/dev/null 2>&1 || return 0
+	else
+		$LT4 "D: ASLIB toolbox_mount: exec mount -t $FS -o $RW $DEV $POINT"
+		! mount -t $FS -o $RW $DEV $POINT             >/dev/null 2>&1 && \
+		$LT4 "D: ASLIB toolbox_mount: exec mount -t $FS -o $RW,remount $DEV $POINT" && \
+		! mount -t $FS -o $RW,remount $DEV $POINT     >/dev/null 2>&1 || return 0
+	fi
+	return 1 # FAILED TO MOUNT
+}
+
+##### ASLIB.SUB.REMOUNT_MOUNTPOINT
+remount_mountpoint() {
+	$LT4 "D: ASLIB exec remount_mountpoint"
+	[ -n "$*" ] && {
+		! is_mounted $1 $2 && \
+		$LT4 "D: ASLIB remount_mountpoint: exec mount -o $2,remount $1" && \
+		! mount -o $2,remount $1    >/dev/null 2>&1 && \
+		$LT4 "D: ASLIB remount_mountpoint: exec mount -o $2,remount $1 $1" && \
+		! mount -o $2,remount $1 $1 >/dev/null 2>&1 && \
+		$LT4 "D: ASLIB remount_mountpoint: exec toolbox_mount $1" && \
+		! toolbox_mount $1          >/dev/null 2>&1 && \
+		{
+			$LT3 "I: ASLIB remount_mountpoint: $1 failed to remount"
+			return 1
+		} || {
+			$LT3 "I: ASLIB remount_mountpoint: $1 remounted successfully"
+			return 0
+		}
+	}
+}
+
+# INIT SCRIPT
+# --------------------------------------------------------------------------------
+# I: INITIALIZE your library
+
+# Rename this function with format init_YOUR_LIBRARY_NAME as it will be run by aslib loader after
+# all the libraries are loaded. 
+# e.g.
+# your library					proper function init name	 
+# func.DUMMY_LIBRARY.aslib ->	init_DUMMY_LIBRARY(){}
+#
+
+init__toolbox_mount(){
+	return 0
+}
+
+# ASLIB RETURN CONFIRMATION
+# --------------------------------------------------------------------------------
+# 
+printf "SCRIPT LOADED $AS_SCRIPT\n"

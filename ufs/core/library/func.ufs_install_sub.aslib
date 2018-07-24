@@ -1,0 +1,260 @@
+#!/sbin/sh
+#
+#	aslib library
+#
+#	CodRLabworks
+#	CodRCA aslib Library Template v4
+#
+
+# LIBRARY DESCRIPTION
+# --------------------------------------------------------------------------------
+# I: UFS_INSTALL SUB, A sub library of UFS_INSTALL LIBRARY for automated android system file installation and modification
+#
+#
+#
+
+# ----------------------------- ASLIB LIBRARY HEADER -----------------------------
+# ASLIB CLEAR
+# --------------------------------------------------------------------------------
+# I: Add The Paths of the files or directory that will be cleared by ASLIB_CLEAR separated by a double dot
+[ -z "$ASLIB_CLEAR" ] && {
+	# aslib clear is not defined by aslib loader may be obsolete or library is sourced directly
+	printf "I: Lib $AS_SCRIPT is sourced directly"
+}
+ASLIB_CLEAR "/sdcard/tmp/tmplib"
+# ---------------------------------- END HEADER ----------------------------------
+
+# INIT VARIABLES
+# --------------------------------------------------------------------------------
+# I: INIT your variables here. avoid exporting your variables here. add it in the
+#    aslib loader.
+
+# Define TMPLIB
+export TMPLIB=/sdcard/tmp/tmplib
+
+export pub_lib_txt_list=;
+export ANDROID_SDK_VER=;
+
+# FUNCTIONS
+# --------------------------------------------------------------------------------
+# I: DEFINE your functions
+
+##### ASLIB.SUB.WIPE_SYSTEM_FILES
+wipe_system_file() {
+	$LT4 "D: ASLIB exec wipe_system_file"
+	if [ -e "/system/$1" ]; then
+		# determine type
+		if [ -d "/system/$1" ]; then
+			# delete recursively
+			$LT3 "I: ASLIB wipe_system_file: WIPING FOLDER -> $1"
+			rm -fR "/system/$1"
+		elif [ -f "/system/$1" ]; then
+			# delete file
+			$LT3 "I: ASLIB wipe_system_file: WIPING FILE   -> $1"
+			rm -f "/system/$1"
+		fi
+		# double checked if removed
+		[ -e "/system/$1" ] && {
+			$LT3 "I: ASLIB wipe_system_file: FAILED TO WIPE"
+		}
+	else
+			$LT3 "I: ASLIB wipe_system_file: SKIPPING..... -> $1"
+	fi
+}
+
+##### ASLIB.SUB.EXTRACT_ZIP
+extract_zip() {
+	$LT4 "D: ASLIB exec extract_zip"
+	[[ -z "$1" || -z "$2" || -z "$3" ]] && {
+		$LT1 "E: ASLIB extract_zip: Missing input!"
+		$LT3 "D: ASLIB extract_zip: S1 -> $1"
+		$LT3 "D: ASLIB extract_zip: S2 -> $2"
+		$LT3 "D: ASLIB extract_zip: S3 -> $3"
+		return 25
+	}
+	
+	# Determine Zip Size
+	[[ -z "$pc_size_zip" && -n "$ZIP" ]] && {
+		$LT4 "D: ASLIB extract_zip: unknown zip size recalculating"
+		pc_size_zip=$(du -ck $ZIP | tail -n 1 | awk '{ print $1 }') || \
+		$LT4 "D: ASLIB extract_zip: fatal error cannot determine zip size"
+	}
+	
+	est_time=$(($pc_size_zip/1000/20))
+	
+	$LT4 "D: ASLIB extract_zip: Zip Size -> $pc_size_zip"
+	$LT4 "D: ASLIB extract_zip: Est Time -> $est_time"
+	
+	progress 1.34 $est_time;
+	(unzip -o "$1" "$2" -d "$3") || $LT2 "E: ASLIB extract_zip: errors during extraction"
+	progress 1.34 1
+	[ "$(ls -A $3 2>/dev/null)" ] || {
+		$LT1 "E: ASLIB extract_zip: unable to extract zip"
+		return 1
+	} 
+	return 0
+}
+
+###### ASLIB.SUB.INSTALL_APP_LIB
+install_app_lib(){
+	# asInstall Sub
+	$LT4 "D: ASLIB install_app_lib: Processing AppLib using TARGET-$1, ABI-$2, LIB-$3,VENDORLIB-$4, SYSTEMPATH-$5"
+		
+	# ----- BEGIN INIT -----
+	
+	local TARGET="$1";local ABI="$2";local LIB="$3";local VENDORLIB="$4";local SYSTEMPATH="$5"
+	
+	# check tmplib definition
+	[ -z "$TMPLIB" ] && {
+		TMPLIB=/sdcard/tmp/tmplib
+	}
+	
+	# check tmplib for installation
+	[[ -e "$TMPLIB" && "$(ls -A $TMPLIB 2>/dev/null)" ]] && {
+		$LT4 "D: ASLIB asInstall: TMPLIB is not empty, clearing..."
+		rm -rf "$TMPLIB/*"
+	}
+	
+	# recreate directory
+	[ ! -e "$TMPLIB" ] && {
+		mkdir_p "$TMPLIB"
+	}
+	
+	# -----  END  INIT  -----
+	
+
+	(unzip -o "$TARGET" "lib/$ABI/*" -d "$TMPLIB") && {
+		for SO in $(ls $TMPLIB/lib/$ABI); do
+			local TMP_SO="$TMPLIB/lib/$ABI/$SO";local VEN_SO="$VENDORLIB/$SO";local APP_SO="$SYSTEMPATH/lib/$LIB/$SO"
+			if [ -e $VEN_SO ];then
+				(cmp -s "$TMPLIB/lib/$ABI/$SO" "$VENDORLIB/$SO" >/dev/null 2>&1) && {
+					$LT4 "D: ASLIB install_app_lib: Linking in APP DIR, a same version exist in $VENDORLIB - $SO "
+					install_LnkFile "$SYSTEMPATH/lib/$LIB/" "$SYSTEMPATH" "$VEN_SO" "$APP_SO"
+				} || {
+					$LT4 "D: ASLIB install_app_lib: Installing in APP DIR, A different SO already exist in $VENDORLIB - $SO"
+					install_file "$TMP_SO" "$APP_SO"
+				}
+			else
+				$LT4 "D: ASLIB install_app_lib: Installing in $VENDORLIB - $SO"
+				install_app_lib_sys "$TMP_SO" "$VEN_SO"
+				$LT4 "D: ASLIB install_app_lib: Linking $SO to APP DIR."
+				install_LnkFile "$SYSTEMPATH/lib/$LIB/" "$SYSTEMPATH" "$VEN_SO" "$APP_SO"
+			fi
+		done
+	} || $LT3 "E: ASLIB install_app_lib: Error in extracting lib from $TARGET"
+	
+	# Clean TMPLIB
+	rm -rf "$TMPLIB/lib"
+}
+
+
+install_app_lib_update_vendor_pub_lib_list(){
+	# Android 8.0 requires to add all vendor library to /sysem/etc/public.libraries.txt
+	
+	# < quote >
+	# In addition to standard public native libraries,
+	# vendors may choose to provide additional native libraries accessible to apps 
+	# by putting them under the /vendor library folder (/vendor/lib for 32 bit libraries and,
+	# /vendor/lib64 for 64 bit) and listing them in: /vendor/etc/public.libraries.txt
+	# < end quote >
+	
+	local pub_lib_txt=/system/vendor/etc/public.libraries.txt;
+	[ ! -e "$pub_lib_txt" ] && {
+		# let create our own list
+		$LT4 "I: ASLIB install_app_lib_update_vendor_pub_lib_list: Generating public.libraries.txt"
+		printf "# ufs generated public.libraries.txt\n" > $pub_lib_txt
+		set_perm 0 0 0644 $pub_lib_txt
+	}
+	# clean pub_lib_txt_list
+	pub_lib_txt_list="$(echo $pub_lib_txt_list | sort -ur | sed '/^ *$/d')"
+	
+	# lets append the list
+	for L in $pub_lib_txt_list;do
+		$LT4 "I: ASLIB install_app_lib_update_vendor_pub_lib_list: adding $L public.libraries.txt"
+		printf "$L\n" >> $pub_lib_txt
+	done
+}
+
+
+###### ASLIB.INSTALL_FILE
+install_file(){
+	# asInstall sub
+	local D=`dirname $2`;
+	[ ! -e "$D" ] && mkdir_p "$D"
+	cp -dp "$1" "$2" || dd if="$1" of="$2"
+	[ ! -e "$2" ] && { $LT3 "E: ASLIB install_file: Failed to install $2"; } || {
+		file_list "${2#/system/}"
+		set_system_fp "$2";
+	}
+}
+
+###### ASLIB.LINK_FILE
+install_LnkFile() {
+	[ ! -e "$1" ] && mkdir_p "$1"
+	ln -sfn "$3" "$4" &&\
+	$LT4 "D: ASLIB install_LnkFile: LINKED FROM ${3#/system/} TO ${4#/system/}" ||\
+	$LT3 "E: ASLIB install_LnkFile: FAILED TO LINK"
+	eval echo "$3 $4"	>> $link_list
+}
+
+###### ASLIB.INSTALL_APP_SYS
+install_app_lib_sys(){
+	local D=`dirname $2`;local B=`basename $2`;local
+	# < quote >
+	# Starting from Android 8.0, vendor public libraries have the following additional restrictions and required setups:
+	# 
+	# The native library in vendor must be properly labeled so it can be accessible to apps. 
+	# If access is required by any apps (including third party apps),
+	# the library must be labeled as same_process_hal_file in a vendor-specific file_contexts file as follows:
+	# /vendor/lib(64)?/libnative.so u:object_r:same_process_hal_file:s0
+	# < end quote >
+	
+	[ "$ANDROID_SDK_VER" -ge "26" ] && {
+		P="u:object_r:same_process_hal_file:s0"
+	} || {
+		P="u:object_r:vendor_file:s0"
+	}
+	
+	[ ! -e "$D" ] && mkdir_p "$D"
+	[ -e "$2" ] && {
+		$LT4 "W: ASLIB install_app_lib_sys: DELETING.. $B already exist in $D."
+		rm -f "$2"
+	}
+	[[ ! -e "$2" || ! -f "$2" ]] && {
+		$LT4 "I: ASLIB install_app_lib_sys: installing $2"
+		{ cp "$1" "$2" || dd if="$1" of="$2" ;} && \
+		{	set_perm 0 0 0644 "$P" "$2";# file_list "${2#/system/}";
+			#pub_lib_txt_list="$pub_lib_txt$(basename $1)"$'\n';
+		} || \
+		$LT3 "E: ASLIB install_app_lib_sys: unable to copy $1"
+	}
+	return 0
+}
+
+# INIT SCRIPT
+# --------------------------------------------------------------------------------
+# I: INITIALIZE your library
+
+# Rename this function with format init_YOUR_LIBRARY_NAME as it will be run by aslib loader after
+# all the libraries are loaded. 
+# e.g.
+# your library					proper function init name	 
+# func.DUMMY_LIBRARY.aslib ->	init_DUMMY_LIBRARY(){}
+#
+
+init_ufs_install_sub(){
+	# get android SDK version
+	[ -z "$ANDROID_SDK_VER" ] && {
+		# MOUNT SYSTEM
+		is_mounted /system rw || remount_mountpoint /system rw 
+		# REQUIRED TO GET THE ANDROID SDK
+		ANDROID_SDK_VER="$(get_prop ro.build.version.sdk)"
+		is_mounted /system rw && umount /system
+	}
+	return 0
+}
+
+# ASLIB RETURN CONFIRMATION
+# --------------------------------------------------------------------------------
+# 
+printf "SCRIPT LOADED $AS_SCRIPT\n"

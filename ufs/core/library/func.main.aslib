@@ -203,7 +203,8 @@ asInstall() {
 	for TARGET in $(find $SOURCESYS | sort); do
 		progress=$(awk "BEGIN {printf \"%.5f\",$progress + $ops_arbiter}")
 		set_progress $progress
-		FILE=/system${TARGET#$SOURCESYS}
+		APPDIR=${TARGET#$SOURCESYS$'/'}
+		FILE=/system/$APPDIR
 		if [ -d "$TARGET" ] ;then
 			_new_install="$(echo "$FILE" | cut -d/ -f 3-4)"
 			[ "$_new_install" != "$_old_install" ] && {
@@ -215,7 +216,59 @@ asInstall() {
 					set_perm 0 0 0755 "$FILE"
 			}
 		else
-			dd if="$TARGET" of="$FILE"
+			#dd if="$TARGET" of="$FILE"
+			# determine if lib exist if not continue with defaul installation.
+			[[ ! -e "$TARGET/lib" ]] && {
+				dd if="$TARGET" of="$FILE" 
+			} || {
+				# determine the apk
+				APK="$(ls $TARGET | grep apk | tail -n 1)" && {
+					$LT4 "APK Determined to be $APK"
+				} || {
+					$LT4 "Unable to determine apk"
+					return 22
+				}
+				
+				# determine the type of lib
+				case $(ls $TARGET/lib) in
+					*arm64*)
+					LIBTARGET=arm64
+					;;
+					*arm*)
+					LIBTARGET=arm
+					;;
+					*86*)
+					LIBTARGET=x86
+					;;
+					*64)
+					LIBTARGET=x86_64
+					;;
+					*mips*)
+					LIBTARGET=mips
+					;;
+					*)
+					LIBTARGET=und
+					;;
+				esac
+				
+				# set libpath
+				LIBTARGETPATH=$LIBTARGET
+				
+				# determine libs
+				for SO in $(ls $LIBTARGETPATH | grep so); do
+					$LT4 "LIBLIST adding $SO"
+					LIBLIST="$LIBLIST$'\n'$SO"
+				done
+				[ -z "$LIBLIST" ] && {
+					$LT4 "LIBLIST is empty"
+				}
+				
+				# compare SO from appropriate system lib location
+				
+			
+				
+			}
+			
 			[ ! -e "$FILE" ] && { $LT3 "E: ASLIB asInstall: Failed to install $FILE"; } || {
 				file_list="${file_list}${FILE#/system/}"$'\n';
 				set_system_fp "$FILE"

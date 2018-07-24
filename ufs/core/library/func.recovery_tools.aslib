@@ -1,0 +1,109 @@
+#!/sbin/sh
+#
+#	aslib library
+#
+#	CodRLabworks
+#	CodRCA aslib Library Template v4
+#
+
+# LIBRARY DESCRIPTION
+# --------------------------------------------------------------------------------
+# I: RECOVERY tools. useful in recovery environment
+#
+#
+
+# ----------------------------- ASLIB LIBRARY HEADER -----------------------------
+# ASLIB CLEAR
+# --------------------------------------------------------------------------------
+# I: Add The Paths of the files or directory that will be cleared by ASLIB_CLEAR separated by a double dot
+[ -z "$ASLIB_CLEAR" ] && {
+	# aslib clear is not defined by aslib loader may be obsolete or library is sourced directly
+	printf "I: Lib $AS_SCRIPT is sourced directly"
+}
+ASLIB_CLEAR "YOUR_PATH"
+# ---------------------------------- END HEADER ----------------------------------
+
+# INIT VARIABLES
+# --------------------------------------------------------------------------------
+# I: INIT your variables here. avoid exporting your variables here. add it in the
+#    aslib loader.
+
+
+# FUNCTIONS
+# --------------------------------------------------------------------------------
+# I: DEFINE your functions
+
+# Init FD
+init_fd(){
+	for FD in `ls /proc/$$/fd`; do
+		(readlink /proc/$$/fd/$FD 2>/dev/null | grep -q -m 1 pipe) && {
+		  (ps | grep " 3 $FD " | grep -v -m 1 grep >/dev/null) && {
+			OUTFD=$FD
+			break
+		  }
+		}
+	done
+}
+
+# ui_print
+ui_print() {
+	[ -z "$OUTFD" ] && init_fd
+	[ -n "$1" ] && {
+		alLog "ui_print" "$1" 
+	}
+	echo -n -e "ui_print $1\n" >> /proc/self/fd/$OUTFD;
+	echo -n -e "ui_print\n"    >> /proc/self/fd/$OUTFD;
+}
+
+# set_progress
+set_progress() {
+	[ -z "$OUTFD" ] && init_fd
+	echo "set_progress $1" 1>&$OUTFD;
+}
+
+# progress
+progress() {
+	[ -z "$OUTFD" ] && init_fd
+	echo "progress $1 $2 " 1>&$OUTFD;
+}
+
+# print_header
+print_header(){
+	[ -z "$OUTFD" ] && init_fd
+	set=0;local tmh_init=false;
+	while true;do
+		eval val='$'TMH$set
+		if [ "$val" == "#" ];then
+			ui_print " "
+		elif [ -n "$val" ]; then
+			ui_print "$val"
+		elif [ -z "$val" ]; then
+			# ignore the first blank TMH
+			[ "$tmh_init" == "true" ] && {
+				break
+			}
+			tmh_init=true
+		fi
+		set=$((++set))
+	done
+}
+
+# INIT SCRIPT
+# --------------------------------------------------------------------------------
+# I: INITIALIZE your library
+
+# Rename this function with format init_YOUR_LIBRARY_NAME as it will be run by aslib loader after
+# all the libraries are loaded. 
+# e.g.
+# your library					proper function init name	 
+# func.DUMMY_LIBRARY.aslib ->	init_DUMMY_LIBRARY(){}
+#
+
+init_recovery_tools(){
+	return 0
+}
+
+# ASLIB RETURN CONFIRMATION
+# --------------------------------------------------------------------------------
+# 
+printf "SCRIPT LOADED $AS_SCRIPT\n"

@@ -1,0 +1,271 @@
+#!/sbin/sh
+#
+#	aslib library
+#
+#	CodRLabworks
+#	CodRCA aslib Library Template v4
+#
+
+# LIBRARY DESCRIPTION
+# --------------------------------------------------------------------------------
+# I: UFS_INSTALL_CHECK, checks variables and definition for UFS_INSTALL LIBRARY
+#
+#
+
+# ----------------------------- ASLIB LIBRARY HEADER -----------------------------
+# ASLIB CLEAR
+# --------------------------------------------------------------------------------
+# I: Add The Paths of the files or directory that will be cleared by ASLIB_CLEAR separated by a double dot
+[ -z "$ASLIB_CLEAR" ] && {
+	# aslib clear is not defined by aslib loader may be obsolete or library is sourced directly
+	printf "I: Lib $AS_SCRIPT is sourced directly"
+}
+ASLIB_CLEAR "YOUR_PATH"
+# ---------------------------------- END HEADER ----------------------------------
+
+# INIT VARIABLES
+# --------------------------------------------------------------------------------
+# I: INIT your variables here. avoid exporting your variables here. add it in the
+#    aslib loader.
+
+
+# FUNCTIONS
+# --------------------------------------------------------------------------------
+# I: DEFINE your functions
+
+##### ASLIB.SUB.PRE_CHECK
+pre_check() {
+	$LT4 "D: ASLIB exec pre_check"
+	[ "$init_pre_check" -eq "1" ] && {
+		$LT2 "I: ASLIB pre_check: not allowed to run twice"
+		return 0
+	}
+
+	# check only mounted mount-points
+	# calculate free space
+	is_mounted /tmp rw && {
+		pc_free_tmp=$(df -Pk /tmp     | tail -n 1 | awk '{ print $4 }')
+		$LT3 "I: ASLIB pre_check: TMP FREE : $pc_free_tmp"
+	} || $LT2 "W: ASLIB pre_check: tmp     is not mounted"
+	
+	is_mounted /sdcard rw && {
+		pc_free_sd0=$(df -Pk /sdcard  | tail -n 1 | awk '{ print $4 }')
+		$LT3 "I: ASLIB pre_check: SD0 FREE : $pc_free_sd0"
+	} || $LT2 "W: ASLIB pre_check: sdcard  is not mounted"
+	
+	is_mounted /sdcard1 rw && {
+		pc_free_sd1=$(df -Pk /sdcard1 | tail -n 1 | awk '{ print $4 }')
+		$LT3 "I: ASLIB pre_check: SD1 FREE : $pc_free_sd1"
+	} || $LT2 "W: ASLIB pre_check: sdcard1 is not mounted"
+	
+	is_mounted /system rw && {
+		pc_free_sys=$(df -Pk /system  | tail -n 1 | awk '{ print $4 }')
+		pc_totl_sys=$(df -Pk /system  | tail -n 1 | awk '{ print $2 }')
+		$LT3 "I: ASLIB pre_check: SYS FREE : $pc_free_sys"
+		$LT3 "I: ASLIB pre_check: SYS TOTL : $pc_totl_sys"
+	} || {
+		$LT2 "W: ASLIB pre_check: system  is not mounted"
+		pc_system_mounted=false
+	}
+	
+	# Check Zip Size
+	pc_size_zip=$(du -ck $ZIP | tail -n 1 | awk '{ print $1 }') && \
+	$LT3 "I: ASLIB pre_check: ZIP SIZE : $pc_size_zip" || \
+	$LT3 "W: ASLIB pre_check: Unable to size-up $ZIP"
+	
+	# Compare total system space vs zip total
+	
+	[[ "$pc_system_mounted" != "false" && "$(($pc_size_zip - $pc_calc_zip_buffer))" -gt "$(($pc_totl_sys - $pc_calc_sys_buffer))" ]] && {
+		$LT1 "E: ASLIB pre_check: zip file is too large than system file"
+		abort $E_SVZ
+	}
+
+	# use size_updatezip as size_limit or use size_fixlimit
+	[[ -z "$pc_size_zip" || "$pc_size_zip" -lt 0 ]] && {
+		$LT2 "I: ASLIB pre_check: Using pc_size_fix=$pc_size_zip"
+		pc_size_min=$pc_size_fix
+	}
+
+	# select  mountpoint by first
+
+	if   [ "$pc_size_min"  -lt "$pc_free_tmp" ];then
+		SOURCEFS=/tmp
+	elif [ "$pc_size_min"  -lt "$pc_free_sd0" ];then
+		SOURCEFS=/sdcard
+	elif [ "$pc_size_min"  -lt "$pc_free_sd1" ];then
+		SOURCEFS=/sdcard1
+	else
+		ui_print "I: Not enough space left for zip extraction"
+		$LT3 "I: ASLIB pre_check: tmp : $pc_free_tmp"
+		$LT3 "I: ASLIB pre_check: sd0 : $pc_free_sd0"
+		$LT3 "I: ASLIB pre_check: sd1 : $pc_free_sd1"
+		$LT3 "I: ASLIB pre_check: sys : $pc_free_sys"
+		abort $E_NME;
+	fi
+	$LT2 "I: ASLIB pre_check: SOURCEFS  -> $SOURCEFS"
+	SOURCEDIR=$SOURCEFS/tmp
+	$LT2 "I: ASLIB pre_check: SOURCEDIR -> $SOURCEDIR"
+	SOURCESYS=$SOURCEDIR/system
+	$LT2 "I: ASLIB pre_check: SOURCESYS -> $SOURCESYS"
+
+	[ "$(ls -A $SOURCESYS 2>/dev/null)" ] && {
+		$LT2 "I: ASLIB pre_check: cleaning SOURCEFS"
+		[ -e "$SOURCESYS" ] && \
+		rm -rf $SOURCESYS/*
+	}
+	init_pre_check=1
+}
+
+##### ASLIB.SUB.INTEGRITY_CHECK
+def_check() {
+	$LT4 "D: ASLIB exec def_check"
+	local ERR_STAT=0
+	! is_enabled def_init && {
+		# check ZIP def
+		[[ -z "$ZIP" || ! -e "$ZIP" ]] && {
+			$LT3 "W: ASLIB def_check: var ZIP not defined."
+			ERR_STAT=$((++ERR_STAT))
+		}
+		# check COREDIR def.
+		[[ -z "$COREDIR" || ! -e "$COREDIR" ]] && {
+			$LT3 "W: ASLIB def_check: var COREDIR not defined."
+			ERR_STAT=$((++ERR_STAT))
+		}
+		# check LIBS def.
+		[[ -z "$LIBS" || ! -e "$LIBS" ]] && {
+			$LT3 "W: ASLIB def_check: var LIBS not defined."
+			ERR_STAT=$((++ERR_STAT))
+		}
+		# check BINARIES def.
+		[[ -z "$BINARIES" || ! -e "$BINARIES" ]] && {
+			$LT3 "W: ASLIB def_check: var BINARIES not defined."
+			ERR_STAT=$((++ERR_STAT))
+		}
+		# THROW ERROR
+		[ "$ERR_STAT" -gt "0" ] && {
+			$LT1 "E: ASLIB def_check: INTEGRITY ERROR $ERR_STAT"
+			ui_print "E: DEF_CHECK ERROR"
+			exit $ERR_STAT
+		} || def_init=true
+	}
+	# runtime var_def SOURCEFS
+	if [[ -n "$SOURCEFS" && ! -e "$SOURCEFS" ]]; then
+		$LT3 "D: ASLIB def_check: var_def SOURCEFS defined but not exist"
+		ERR_STAT=$(($ERR_STAT+10))
+	elif [ -e "$SOURCEFS" ]; then
+		$LT3 "D: ASLIB def_check: var_def SOURCEFS  defined"
+	else
+		$LT3 "E: ASLIB def_check: var_def SOURCEFS  not defined."
+		ERR_STAT=$(($ERR_STAT+20))
+	fi
+
+	# runtime var_def SOURCEDIR
+	if [[ -n "$SOURCEDIR" && ! -e "$SOURCEDIR" ]];then
+		$LT3 "D: ASLIB def_check: var_def SOURCEDIR defined but not exist"
+		ERR_STAT=$(($ERR_STAT+25))
+	elif [ -e "$SOURCEDIR" ];then
+		$LT3 "D: ASLIB def_check: var_def SOURCEDIR defined"
+	else
+		$LT3 "E: ASLIB def_check: var_def SOURCEDIR not defined."
+		ERR_STAT=$(($ERR_STAT+35))
+	fi
+
+	# runtime var_def SOURCEDIR
+	if [[ -n "$SOURCESYS" && ! -e "$SOURCESYS" ]]; then
+		$LT3 "D: ASLIB def_check: var_def SOURCESYS defined but not exist"
+		ERR_STAT=$(($ERR_STAT+40))
+	elif [ -e "$SOURCESYS" ]; then
+		$LT3 "D: ASLIB def_check: var_def SOURCESYS defined"
+	else
+		$LT3 "E: ASLIB def_check: var_def SOURCESYS not defined."
+		ERR_STAT=$(($ERR_STAT+50))
+	fi
+
+	# throw ERROR
+	[ "$ERR_STAT" -gt "0" ] && {
+		$LT1 "E: ASLIB def_check: VAR_DEF INTEGRITY ERROR $ERR_STAT"
+		return $ERR_STAT
+	} || return 0
+}
+
+##### ASLIB.SUB.VAR_DEF
+def_config_check() {
+	$LT4 "D: ASLIB exec def_config_check"
+	# logic, aslib has default configs when loaded,
+	# but will be overridden by configs defined by $config_loc
+	e=0;
+	[[ -z "$loc_of_config" || ! -e "$loc_of_config" ]] && {
+		$LT2 "W: ASLIB def_config_check: undefined or not existing config_loc. $loc_of_config"
+		e=1
+	}
+	[[ -z "$loc_of_aslib"  || ! -e "$loc_of_aslib" ]] && {
+		tmp_loc_of_aslib="$(dirname $0)""/aslib"
+		[ -e "$tmp_loc_of_aslib" ] && {
+			loc_of_aslib=$tmp_loc_of_aslib
+		} || {
+			$LT2 "W: ASLIB def_config_check: undefined or not existing config_loc. $loc_of_aslib"
+			e=1
+		}
+	}
+	[ -z "$def_config_list" ] && {
+		$LT2 "W: ASLIB def_config_check: null config list"
+	}
+	[ "$e" -gt "1" ] && {
+		$LT2 "E: ASLIB def_config_check: integrity error. please check def. not running"
+		return 1
+	}
+	local DEF_ERR=0
+	# General Def.
+	$LT2 "I: ASLIB def_config_check: checking aslib configs"
+	$LT3 "D: ASLIB def_config_check: last loaded config  ## $last_config_loaded ##"
+	for CONF in $def_config_list; do 
+		eval CONFVAL='$'$CONF
+		[ -n "$CONFVAL" ] && {
+			$LT3 "D: ASLIB def_config_check: curConfig: $(printf "%-20s %s\n" $CONF "-> $CONFVAL")"
+		} || {
+			GVAL=$(get_file_prop $loc_of_config $CONF)
+			[ -n "$GVAL" ] && {
+				eval $CONF="$GVAL"
+				$LT3 "D: ASLIB def_config_check: ufsConfig: $(printf "%-20s %s\n" $CONF "-> $GVAL")"
+			} || {
+				$LT3 "W: ASLIB def_config_check: $CONF is not defined in $loc_of_config, trying default."
+				[ "${CONF##*=$loc_of_aslib*}" ] && {
+					GVAL=$(get_file_prop $loc_of_aslib $CONF)
+					[ -n "$GVAL" ] && {
+						eval $CONF="$GVAL"
+						$LT3 "D: ASLIB def_config_check: defConfig: $(printf "%-20s %s\n" $CONF "-> $GVAL")"
+					} || {
+						$LT3 "D: ASLIB def_config_check:   default: $CONF is defined as default null"
+					}
+				} || {
+					$LT2 "E: ASLIB def_config_check: $CONF has no default def., check your script!"
+					DEF_ERR=$((++DEF_ERR))
+				}
+			}
+		}
+	done
+	[ "$DEF_ERR" -gt "0" ] && {
+		$LT1 "W: ASLIB def_config_check: $DEF_ERR configs are not defined properly, please check your def_config_list def."
+		return $DEF_ERR
+	} || return 0
+}
+
+# INIT SCRIPT
+# --------------------------------------------------------------------------------
+# I: INITIALIZE your library
+
+# Rename this function with format init_YOUR_LIBRARY_NAME as it will be run by aslib loader after
+# all the libraries are loaded. 
+# e.g.
+# your library					proper function init name	 
+# func.DUMMY_LIBRARY.aslib ->	init_DUMMY_LIBRARY(){}
+#
+
+init_ufs_install_check(){
+	return 0
+}
+
+# ASLIB RETURN CONFIRMATION
+# --------------------------------------------------------------------------------
+# 
+printf "SCRIPT LOADED $AS_SCRIPT\n"

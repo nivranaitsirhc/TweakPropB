@@ -172,7 +172,7 @@ tweakprop_me() {
 					ui_print "  -appended \"$app\" to \"$var\"" && t_count=$((++t_count))
 				} || alLog "I: error appending $var"
 			}
-		# change value only iif entry exists
+		# change value only if entry exists
 		elif echo "$line" | grep -q '^\$'
 		then
 			entry=$(echo "${line#?}" | sed -e 's~[\~&]~\\&~g')
