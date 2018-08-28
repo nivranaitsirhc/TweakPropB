@@ -83,6 +83,35 @@ kill_tail_recovery(){
 	echo "Error. Unable to kill tail recovery, Manually Reboot the device."
 }
 
+unzip_core(){
+	# clean COREDIR remnants of past install
+	[ -e "$COREDIR" ] && rm -rf "$COREDIR"
+	local UER=0;
+	# get the unzip list
+	unzip -o "$ZIP" "core/unzip.list" -d "/tmp"
+
+	if [ -e "/tmp/core/unzip.list" ]; then
+		local IFS=$'\n'
+		for L in $(cat /tmp/core/unzip.list) "bin/busybox-$BINARCH";do
+			[ "$L" == "${L/#/}" ] && {
+				unzip -o "$ZIP" "core/$L" -d "/tmp"
+				[ ! -e "/tmp/core/${L/\*/}" ] && {
+					ColdLog "E: UPDATE-BINARY: unable to extract core/$L"
+					UER=100
+					break;
+				}
+			}
+		done
+	else UER=10;fi
+	
+	[ "$UER" != "0" ] && {
+		# default unzip core
+		echo "UNZIPING core/*..."
+		unzip -o "$ZIP" "core/*" -d "/tmp"
+	}
+}
+
+
 INIT_TMP_LOG() {
 	export TMP_LOG=/sdcard/logs/.devlogs/tmp_log
 	# Create Directory
@@ -146,21 +175,8 @@ if [ ! -f "/sbin/unzip" ]; then
 	exit 1
 fi
 
-# clean COREDIR remnants of past install
-[ -e "$COREDIR" ] && rm -rf "$COREDIR"
-
-# get the unzip list
-unzip -o "$ZIP" "core/unzip.list" -d "/tmp"
-
-[ -e "/tmp/core/unzip.list" ] && {
-	for L in `cat /tmp/core/unzip.list` "bin/busybox-$BINARCH";do
-		unzip -o "$ZIP" "core/$L" -d "/tmp"
-		[ ! -e "/tmp/$L" ] && ColdLog "E: UPDATE-BINARY: unable to extract $L"
-	done
-} || {
-	# default unzip core
-	unzip -o "$ZIP" "core/*" -d "/tmp"
-}
+# Unzip CORE ESSENTIALS
+unzip_core
 
 # create the binaries directory
 install -d "$BINARIES"

@@ -191,7 +191,7 @@ install_file(){
 ###### ASLIB.LINK_FILE
 install_LnkFile() {
 	[ ! -e "$1" ] && mkdir_p "$1"
-	ln -sfn "$3" "$4" &&\
+	ln -sf "$3" "$4" &&\
 	$LT4 "D: ASLIB install_LnkFile: LINKED FROM ${3#/system/} TO ${4#/system/}" ||\
 	$LT3 "E: ASLIB install_LnkFile: FAILED TO LINK"
 	eval echo "$3 $4"	>> $link_list

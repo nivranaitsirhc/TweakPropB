@@ -53,12 +53,12 @@ link_files(){
 			if [ ! -e "$A" ];then
 				mkdir -p `dirname $A`
 				copy_file "$BL$A" "$A"
-				ln -sfn "$BL$A" "$B" &&\
+				ln -sf "$BL$A" "$B" &&\
 				LM="RESTORED & LINKED"
 			else 
 				(cmp "$A" "$BL$A") && {
 					# the file are the same no need to restore the file just link
-					ln -sfn "$A" "$B" && LM="LINKED           "
+					ln -sf "$A" "$B" && LM="LINKED           "
 				} || {
 					# the file are not the same we need to install the file
 					copy_file "$BL$A" "$B"
@@ -387,13 +387,13 @@ case "$1" in
 	remount_mountpoint /sdcard rw
 	
 	# Backup
-	file_log "I: $addon_name: backing_up files"
+	file_log "I: backup: backing_up files"
 	list_files | while read FILE DUMMY; do
 		[ -e "$S/$FILE" ] && {
 			backup_file "$S/$FILE"
 			[ -e "$C/system/$FILE" ] && \
-			file_log "I: $addon_name: success :$C/system/$FILE" ||\
-			file_log "E: $addon_name: FAILED  :$S/$FILE"
+			file_log "I: backup: success :$C/system/$FILE" ||\
+			file_log "E: backup: FAILED  :$S/$FILE"
 		}
 	done
 	
@@ -409,26 +409,26 @@ case "$1" in
 	# Safely Check that SDCARD is mounted
 	remount_mountpoint /sdcard rw
 	
-	file_log "I: $addon_name: wiping files"
+	file_log "I: restore: wiping files"
 	# Wipe files
 	for m in $wipe_list;do
 		[ -e /system/$m ] && {
 			rm -rf /system/$m && \
-			file_log "I: $addon_name: removed :/system/$m" || \
-			file_log "E: $addon_name: FAILED  :/system/$m"
+			file_log "I: restore: removed :/system/$m" || \
+			file_log "E: restore: FAILED  :/system/$m"
 		}
 	done
 	
 	# Install
-	file_log "I: $addon_name: restoring files"
+	file_log "I: restore: restoring files"
 	list_files | while read FILE REPLACEMENT; do
 		R=""
 		[ -n "$REPLACEMENT" ] && R="$S/$REPLACEMENT"
 		[ -f "$C/$S/$FILE"  ] && (
 			restore_file $S/"$FILE" "$R"
 			[ -e $S/"$FILE" ] &&\
-			file_log "I: $addon_name: installed :$S/$FILE" ||\
-			file_log "E: $addon_name: FAILED    :$S/$FILE"
+			file_log "I: restore: installed :$S/$FILE" ||\
+			file_log "E: restore: FAILED    :$S/$FILE"
 		)
 	done
 	
@@ -451,7 +451,7 @@ case "$1" in
 	link_files
 	
 	# Setup Correct Permissions
-	file_log "I: $addon_name: setting permisions"
+	file_log "I: post-restore: setting permisions"
 	for i in $(list_files); do
 		[ -e "$S/$i" ] && {
 			set_system_fp "$S/$i"
@@ -461,9 +461,9 @@ case "$1" in
 	done
 	
 	# Remove tmp files
-	file_log "I: $addon_name: removing waste $C"
+	file_log "I: post-restore: removing waste $C"
 	rm -rf "$C"
-	[ -e $C ] && file_log "I: $addon_name: failed in removing waste $C, just remove it manually."
+	[ -e $C ] && file_log "I: post-restore: failed in removing waste $C, just remove it manually."
 	
 	# FLUSH THE FILE LOG TO THE LOGFILE
 	LOG_FILE=/sdcard/logs/ufs/ota/"$addon_name"'_'$(date "+%Y-%m-%d_%H-%M-%S").log
