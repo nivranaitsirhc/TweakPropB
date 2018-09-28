@@ -78,21 +78,21 @@ export pc_stat_tmp=0                    # autogen : 0 if tmp has no errors
 # --------------------------------------------------------------------------------
 # I: ESSENTIAL variables ! DO NOT MODIFY !
 
-export SOURCEDIR=
-export SOURCEFS=
-export SOURCESYS=                       
+export SOURCEDIR=;
+export SOURCEFS=;
+export SOURCESYS=;                       
 
 
 # ASLIB COLD_LOG CONFIGS
-export flush_logs=1
-export ColdLog=ColdLog
+export flush_logs=1;
+export ColdLog=ColdLog;
 
 # ASLIB GET_PROP CONFIGS
-export PROPFILES="/system/default.prop /system/build.prop /data/local.prop /default.prop /build.prop"
+export PROPFILES="/system/default.prop /system/build.prop /data/local.prop /default.prop /build.prop";
 
 # ASLIB DEF_CONFIG_CHECK
-loc_of_config=                   # MUST BE DEFINED BY INSTALLER SH or def_config_check() will be disabled
-loc_of_aslib=                    # MUST BE DEFINED BY INSTALLER SH or def_config_check() will be disabled
+loc_of_config=;                   # MUST BE DEFINED BY INSTALLER SH or def_config_check() will be disabled
+loc_of_aslib=;                    # MUST BE DEFINED BY INSTALLER SH or def_config_check() will be disabled
 
 # ASLIB PRINT_HEADER
 export TMH0=;

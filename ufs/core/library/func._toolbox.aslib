@@ -15,7 +15,7 @@
 # ----------------------------- ASLIB LIBRARY HEADER -----------------------------
 # ASLIB CLEAR
 # --------------------------------------------------------------------------------
-# I: Add The Paths of the files or directory that will be cleared by ASLIB_CLEAR separated by a double dot
+# I: Add The Paths of the files or directory that will be cleared by ASLIB_CLEAR separated by a (:) double dot
 [ -z "$ASLIB_CLEAR" ] && {
 	# aslib clear is not defined by aslib loader may be obsolete or library is sourced directly
 	printf "I: Lib $AS_SCRIPT is sourced directly"
@@ -55,7 +55,7 @@ set_perm() {
 	else
 		D="$5";u="$1";g="$2";m="$3";P="$4"
 	fi
-	$LT2 "I: ASLIB set_perm: setting permission $u - $g $m $P $D"
+	$LT4 "D: ASLIB set_perm: setting permission $u - $g $m $P $D"
 	chown "$u.$g" "$D"	||\
 	chown "$u:$g" "$D"	
 	chmod "$m" "$D"		
@@ -91,7 +91,7 @@ mkdir_p(){
 		done
 		
 		# create directory
-		$LT4 "I: ASLIB mkdir_p: creating directory path $D, with $u:$g - mode $m"
+		$LT4 "D: ASLIB mkdir_p: creating directory path $D, with $u:$g - mode $m"
 		for L in $LIST;do
 			mkdir "$L"
 			chown "$u.$g" "$L" && chmod "$m" "$L"
@@ -142,11 +142,11 @@ copy_fsp(){
 					return 0 # no need to proceed
 				} # proceed if in root mode.
 			} || {
-				$LT4 "I: ASLIB copy_fsp: FAILED, unable to copy $opt1"
+				$LT4 "W: ASLIB copy_fsp: FAILED, unable to copy $opt1"
 				return 1
 			}
 		else
-			$LT4 "I: ASLIB copy_fsp: FAILED, unable to copy link file $opt1"
+			$LT4 "W: ASLIB copy_fsp: FAILED, unable to copy link file $opt1"
 			return 1
 		fi
 	}

@@ -15,7 +15,7 @@
 # ----------------------------- ASLIB LIBRARY HEADER -----------------------------
 # ASLIB CLEAR
 # --------------------------------------------------------------------------------
-# I: Add The Paths of the files or directory that will be cleared by ASLIB_CLEAR separated by a double dot
+# I: Add The Paths of the files or directory that will be cleared by ASLIB_CLEAR separated by a (:) double dot
 [ -z "$ASLIB_CLEAR" ] && {
 	# aslib clear is not defined by aslib loader may be obsolete or library is sourced directly
 	printf "I: Lib $AS_SCRIPT is sourced directly"

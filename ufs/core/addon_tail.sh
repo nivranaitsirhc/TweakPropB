@@ -49,29 +49,52 @@ link_files(){
 		[ "$A" == "${A/#/}" ] && {
 			LM=;
 			mkdir -p `dirname $B`
-			# compare backup_to present file
+			# compare backup to present file
 			if [ ! -e "$A" ];then
-				mkdir -p `dirname $A`
-				copy_file "$BL$A" "$A"
-				ln -sf "$BL$A" "$B" &&\
-				LM="RESTORED & LINKED"
+				# check backup if exist
+				[ -e "$BL$A" ] && {
+					# copy so to lib and link to apk
+					mkdir -p `dirname $A`
+					copy_file "$BL$A" "$A"
+					ln -sf "$A" "$B" &&\
+					LM="RESTORED & LINKED"
+				}
 			else 
 				(cmp "$A" "$BL$A") && {
-					# the file are the same no need to restore the file just link
+					# the so are the same no need to restore, just link
 					ln -sf "$A" "$B" && LM="LINKED           "
 				} || {
-					# the file are not the same we need to install the file
+					# the so are not the same we need to install the so
 					copy_file "$BL$A" "$B"
 					[ -e "$B" ] && LM="INSTALLED        "
 				}
 			fi
 			[ -n "$LM" ] && \
-				$LT3 "I: ASLIB link_files: $LM $B" || \
+				$LT3 "I: ASLIB link_files: $LM $B" || {
 				$LT3 "E: ASLIB link_files: FAILED TO LINK $B"
+				# calling manual so install
+				extract_so_from_apk "$B"
+			}
 		}
 	done
 }
 
+# Extract the so files from apk, when link restore fails
+extract_so_from_apk(){
+	local apk="$(echo $1 | cut -d/ -f4-4).apk";local apkpath="$(echo $1 | cut -d/ -f1-4)"
+	local apksotarget="$(echo $1 | cut -d/ -f5-)";local apktarget="$apkpath/$apk"
+	# test apk location
+	if [ -e "$apktarget" ]; then
+		# extract so from apk
+		unzip -o "$apktarget" "$apksotarget" -d "$apkpath"
+		# test so extraction
+		[ -f "$1" ] && \
+		$LT3 "I: ASLIB extract_so_from_apk: SO recovered from $apk" || \
+		$LT3 "E: ASLIB extract_so_from_apk: failed to extract SO from APK, failing install.."
+	else
+		$LT3 "E: ASLIB extract_so_from_apk: Missing APK, ultimately failing SO install.."
+	fi
+}
 
 # Backup Links
 backup_link(){

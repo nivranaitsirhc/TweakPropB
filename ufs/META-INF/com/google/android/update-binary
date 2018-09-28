@@ -205,22 +205,28 @@ for bin in $ufsBIN; do
 	}
 done
 
+# test busybox
+($bb --list >/dev/null 2>&1) || {
+	ui_print "E: UPDATE-BINARY: Unusable Busybox!"
+	exit_ 105;
+}
+
 [ -e "$bb" ] && {
-  for i in $($bb --list); do
-    ! ln -sf "$bb" "$BINARIES/$i"     && \
-	! $bb ln -sf "$bb" "$BINARIES/$i" && \
-	! $bb ln -f "$bb" "$BINARIES/$i"  && {
-      # create script wrapper if symlinking and hardlinking failed because of restrictive selinux policy
-      ! echo "#!$bb" > "$BINARIES/$i" || \
-	  ! chmod +x "$BINARIES/$i" && {
-        ui_print "ERROR: Failed to set-up pre-bundled busybox"
-        ui_print "Please use TWRP as recovery instead"
-        exit_ 10
-      }
-    }
-  done
-  PATH="$BINARIES:$PATH" $bb ash "$INIT" "$@"
-  exit_ $?
+	for i in $($bb --list); do
+		! ln -sf "$bb" "$BINARIES/$i"     && \
+		! $bb ln -sf "$bb" "$BINARIES/$i" && \
+		! $bb ln -f "$bb" "$BINARIES/$i"  && {
+			# create script wrapper if symlinking and hardlinking failed because of restrictive selinux policy
+			! echo "#!$bb" > "$BINARIES/$i" || \
+			! chmod +x "$BINARIES/$i" && {
+				ui_print "ERROR: Failed to set-up pre-bundled busybox"
+				ui_print "Please use TWRP as recovery instead"
+				exit_ 10
+			}
+		}
+	done
+	PATH="$BINARIES:$PATH" $bb ash "$INIT" "$@"
+	exit_ $?
 } || {
 	ui_print "ERROR: Unable to load pre-bundled busybox"
 	exit_ 12

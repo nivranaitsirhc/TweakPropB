@@ -16,7 +16,7 @@
 # ----------------------------- ASLIB LIBRARY HEADER -----------------------------
 # ASLIB CLEAR
 # --------------------------------------------------------------------------------
-# I: Add The Paths of the files or directory that will be cleared by ASLIB_CLEAR separated by a double dot
+# I: Add The Paths of the files or directory that will be cleared by ASLIB_CLEAR separated by a (:) double dot
 [ -z "$ASLIB_CLEAR" ] && {
 	# aslib clear is not defined by aslib loader may be obsolete or library is sourced directly
 	printf "I: Lib $AS_SCRIPT is sourced directly"
@@ -98,7 +98,7 @@ extract_zip() {
 ###### ASLIB.SUB.INSTALL_APP_LIB
 install_app_lib(){
 	# asInstall Sub
-	$LT4 "D: ASLIB install_app_lib: Processing AppLib using TARGET-$1, ABI-$2, LIB-$3,VENDORLIB-$4, SYSTEMPATH-$5"
+	$LT4 "D: ASLIB install_app_lib: Processing AppLib using "$'\n'"TARGET"$'\t'"- $1,"$'\n'"ABI"$'\t'"- $2,"$'\n'"LIB"$'\t'"- $3,"$'\n'"VENLIB"$'\t'"- $4,"$'\n'"SYSPATH"$'\t'"- $5"
 		
 	# ----- BEGIN INIT -----
 	
@@ -192,7 +192,7 @@ install_file(){
 install_LnkFile() {
 	[ ! -e "$1" ] && mkdir_p "$1"
 	ln -sf "$3" "$4" &&\
-	$LT4 "D: ASLIB install_LnkFile: LINKED FROM ${3#/system/} TO ${4#/system/}" ||\
+	$LT4 "D: ASLIB install_LnkFile:"$'\n'"LINKED "$'\t'"<- $3"$'\n'"LINKED "$'\t'"-> $4" ||\
 	$LT3 "E: ASLIB install_LnkFile: FAILED TO LINK"
 	eval echo "$3 $4"	>> $link_list
 }

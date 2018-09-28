@@ -22,7 +22,6 @@
 # ___________________________________________________________________________________________________________ <- 110 char
 #
 
-
 # INSTALL.SH
 #############################
 # LOAD INSTALL_INIT			#
@@ -50,13 +49,13 @@ is_enabled print_header_enabled && {
 ##### PRE-INIT ASLIB VERSION
 # ------------------------------------------------------------------- <- 70 char
 
-# ASLIB VERSION CHECK
-[ "$aslib_version" -lt "$aslib_req" ] && {
-	ui_print "E: ASLIB version mismatch"
-	ui_print "I: Loaded   :$aslib_version"
-	ui_print "I: Required :$aslib_req"
-	abort $E_AVM
-}
+# # ASLIB VERSION CHECK
+# [ "$aslib_version" -lt "$aslib_req" ] && {
+	# ui_print "E: ASLIB version mismatch"
+	# ui_print "I: Loaded   :$aslib_version"
+	# ui_print "I: Required :$aslib_req"
+	# abort $E_AVM
+# }
 
 ##### PRE-INIT SDK & DEVICE CHECK
 # ------------------------------------------------------------------- <- 70 char
@@ -65,7 +64,7 @@ is_enabled print_header_enabled && {
 cur_device=$(get_prop ro.product.device);				# GET DEVICE ID
 cur_android_version=$(get_prop ro.build.version.sdk);	# GET DEVICE SDK
 
-# DEVICE MATCHING DEVICE
+# MATCHING DEVICE
 [[ ! -z "$req_device" && "$cur_device" != "$req_device" ]] && {
 	ui_print "W: Not a $req_device device device."
 	exit 1
@@ -80,25 +79,19 @@ cur_android_version=$(get_prop ro.build.version.sdk);	# GET DEVICE SDK
 	case $req_force in
 		1) 	# ENFORCING
 			if [ "$cur_android_version" != "$req_android_sdk" ];then
-				ui_print "W: Android SDK Mismatch"
-				ui_print "I: Current  : $cur_android_version"
-				ui_print "I: Required : $req_android_sdk"
+				ui_print "W: Android SDK Mismatch"$'\n'"I: Current  : $cur_android_version"$'\n'"I: Required : $req_android_sdk"
 				abort $E_SDM
 			fi
 		;;
 		2)	# LESS THAN EQUAL
 			if [ "$cur_android_version" -gt "$req_android_sdk" ];then
-				ui_print "W: Android SDK Mismatch"
-				ui_print "I: Current   : $cur_android_version"
-				ui_print "I: Required <= $req_android_sdk"
+				ui_print "W: Android SDK Mismatch"$'\n'"I: Current   : $cur_android_version"$'\n'"I: Required <= $req_android_sdk"
 				abort $E_SDM
 			fi
 		;;
 		3) # GREATER THAN EQUAL
 			if [ "$cur_android_version" -lt "$req_android_sdk" ];then
-				ui_print "W: Android SDK Mismatch"
-				ui_print "I: Current   : $cur_android_version"
-				ui_print "I: Required >= $req_android_sdk"
+				ui_print "W: Android SDK Mismatch"$'\n'"I: Current   : $cur_android_version"$'\n'"I: Required >= $req_android_sdk"
 				abort $E_SDM
 			fi
 		;;
@@ -114,8 +107,7 @@ cur_android_version=$(get_prop ro.build.version.sdk);	# GET DEVICE SDK
 # PRE_CHECK
 # ----------------------------------------------- <- 50 char
 #
-
-pre_check;
+pre_check; # pre check defined values..
 
 # ##########################################################################################
 #  EXTRACT SYSTEM & USER FOLDERS
@@ -150,7 +142,6 @@ set_progress 0.30
 # CREATE_WIPELIST
 # ----------------------------------------------- <- 50 char
 #
-
 create_wipelist;
 
 # ##########################################################################################
@@ -165,11 +156,7 @@ is_enabled calculatespace && {
 	ui_print " - Calculating Space"
 	wipe_size=0;tmp_size=0;install_size=0;wipe_file_count=0;
 
-
-	$ColdLog "I: INSTALLER.SH: Calculating system INSTALL_SIZE"
-	install_size=$(du -ck $SOURCESYS | tail -n 1 | awk '{ print $1 }')
-
-	$ColdLog "I: INSTALLER.SH: Calculating system WIPE_SIZE"
+	$ColdLog "I: INSTALLER.SH: Calculating system WIPE_SIZE.."
 	for TARGET in $(cat $wipe_list); do
 		[ -e /system/$TARGET ] && {
 			tmp_size=$(du -ck /system/$TARGET | tail -n 1 | awk '{ print $1 }')
@@ -178,11 +165,12 @@ is_enabled calculatespace && {
 			$ColdLog "D: INSTALLER.SH: SIZE:$(printf "%-8s %s\n" $tmp_size "<- /system/$TARGET")"
 		}
 	done
-
+	$ColdLog "I: INSTALLER.SH: Calculating system INSTALL_SIZE.."
+	install_size=$(du -ck $SOURCESYS | tail -n 1 | awk '{ print $1 }')
+	$ColdLog "I: INSTALLER.SH: Displaying Total sizes.."
+	$ColdLog "I: INSTALLER.SH: Total system wipe size    -> $wipe_size"	
 	$ColdLog "I: INSTALLER.SH: Total system install size -> $install_size"
-	$ColdLog "I: INSTALLER.SH: Total system wipe size    -> $wipe_size"
 	$ColdLog "I: INSTALLER.SH: Total system free size    -> $pc_free_sys"
-
 	[ "$install_size" -gt "$(($pc_free_sys + $wipe_size))" ] && {
 		ui_print "E: INSTALLER.SH: Install size is to large for free system space."
 		exit 1
@@ -202,7 +190,6 @@ is_enabled exec_wipe_list && {
 	ui_print " - Removing Unwanted"
 	asWipelist;
 }
-
 
 # INSTALLATION
 # ___________________________________________________________________________________________________________ <- 110 char

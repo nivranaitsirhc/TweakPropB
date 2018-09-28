@@ -60,7 +60,7 @@ PROPFILES="/system/default.prop /system/build.prop /data/local.prop /default.pro
 
 # SAMPLE HEADER 
 TMH0=; # ! NOTE: please ensure that TMH begins and ends in null values !
-TMH1="MAIN ufsconfig"
+TMH1="MAIN ufsconfig header"
 TMH2="*******************************"
 TMH3="        uniFlashScript"
 TMH4="*******************************"

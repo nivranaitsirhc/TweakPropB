@@ -8,28 +8,28 @@
 #
 
 # HEADER DEFAULT MESSAGE
-TMH1="TEST"
+TMH1="INIT.SH"
 TMH2="############################"
 TMH3="      uniFlashScript        "
 TMH4="############################"
-TMH5="TEST"
+TMH5="INIT.SH"
+TMH6="If this header is displayed something has gone wrong with the script, or an invalid installer.sh/install.sh was loaded. check the logs.."
 
 # FUNCTIONS
 # ___________________________________________________________________________________________________________ <- 110 char
 #
 
 # placeholder functions
-install_init(){ $ColdLog "I: INSTALLER.SH: install.sh was not loaded!"; return 0;}
-
-install_main(){ $ColdLog "I: INSTALLER.SH: install.sh was not loaded!"; return 0;}
-
-install_post(){ $ColdLog "I: INSTALLER.SH: install.sh was not loaded!"; return 0;}
+__pfm="I: INSTALLER.SH: install.sh was not loaded!";
+install_init(){ $ColdLog "$__pfm"; return 0;}
+install_main(){ $ColdLog "$__pfm"; return 0;}
+install_post(){ $ColdLog "$__pfm"; return 0;}
 
 abort () { ui_print "$1";exit 1; }
 
 ui_print(){
-	echo -n -e "ui_print $1\n" >> /proc/self/fd/$OUTFD
-	echo -n -e "ui_print\n"    >> /proc/self/fd/$OUTFD
+	echo -ne "ui_print $1\n" >> /proc/self/fd/$OUTFD
+	echo -ne "ui_print\n"    >> /proc/self/fd/$OUTFD
 	echo "$(date "+%H:%M:%S") $1" >> $TMP_LOG
 }
 
@@ -40,11 +40,11 @@ ColdLog() {
 
 flush_log(){
 	ColdLog "I: INIT.SH: Flushing TMP_LOG"
-	ColdLog "I: INIT.SH: Flushing DONE!!"
 	uFS_TL=/sdcard/logs/.devlogs/flush_$uFS_name.log
 	echo $'\n\n\n'"FLUSH LOG $(date)"$'\n' >> $uFS_TL
 	cat  "$TMP_LOG"                        >> $uFS_TL
 	echo $'\n'"DONE..."$'\n\n'             >> $uFS_TL
+	ColdLog "I: INIT.SH: Flushing DONE!!"
 }
 
 INIT_TMP_LOG() {
@@ -60,9 +60,7 @@ INIT_TMP_LOG() {
 # START TMP_LOG
 [ -z "$INIT_TMP_LOG" ] && [ "$INIT_TMP_LOG" != "true" ] && INIT_TMP_LOG;
 
-
 ColdLog=ColdLog
-
 
 # INIT
 # ___________________________________________________________________________________________________________ <- 110 char
@@ -173,6 +171,9 @@ CORE_INSTALLERSH=$COREDIR/installer.sh
 
 # clear list
 clear_list;
+
+# Courtesy Call ASLIB_CLEAR
+ASLIB_CLEAR CLEAR
 
 # EXIT WITH ERRCODE FROM INSTALLER.SH
 return "$INSTL_ERR"
