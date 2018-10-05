@@ -40,43 +40,75 @@ toolbox_mount() {
 	local RW=rw
 	[ ! -z "$2" ] && RW=$2
 	
-	$LT4 "D: ASLIB toolbox_mount: mounting using using /etc/fstab entry"
-
+	$LT4 "D: ASLIB toolbox_mount: mounting using /etc/fstab entry"
+	
 	local DEV=;local POINT=;local FS=;
 	
-	for i in `cat /etc/fstab | grep -m 1 "$1"`; do
-		if [ -z "$POINT" ]; then POINT=$i;elif [ -z "$FS" ]; then FS=$i;elif [ -z "$DEV" ]; then DEV=$i;break;fi
-	done
+	if [ -e "/etc/fstab" ];then
+		for i in `cat /etc/fstab | grep -m1 "$1"`; do
+			#if [ -z "$DEV" ]; then DEV=$i;elif [ -z "$POINT" ]; then POINT=$i;elif [ -z "$FS" ]; then FS=$i;break;fi
+			[[ -n "$DEV" && -n "$POINT" && -n "$FS" ]] && break;
+			[ -z "$DEV" ] && {
+				echo "$i" | grep "/dev/block" >/dev/null 2>&1 && DEV="$i";
+			} || {
+				[ -z "$FS" ] && {
+					echo "$i" | grep -wo "auto\|vfat\|ext4\|ext3\|ext2\|f2fs\|fat32\|fat\|fuse" >/dev/null 2>&1&& FS="$i";
+				} || {
+					[ -z "$POINT" ] && {
+					echo "$i" | grep -w "$1" >/dev/null 2>&1&& POINT="$i";
+					}
+				}
+			}
+		done
+		
+		$LT4 "D: ASLIB toolbox_mount: exec mount -t $FS -o $RW $DEV $POINT"
+		! mount -t $FS -o $RW $DEV $POINT && \
+		$LT4 "D: ASLIB toolbox_mount: exec mount -t $FS -o $RW,remount $DEV" && \
+		! mount -t $FS -o $RW,remount $DEV || return 0
+	else
+		$LT4 "W: ASLIB toolbox_mount: skipping /etc/fstab, target does not exist in file"
+	fi
 	
-	$LT4 "D: ASLIB toolbox_mount: exec mount -t $FS -o $RW $DEV $POINT"
-	! mount -t $FS -o $RW $DEV $POINT               >/dev/null 2>&1 && \
-	$LT4 "D: ASLIB toolbox_mount: exec mount -t $FS -o $RW,remount $DEV $POINT" && \
-	! mount -t $FS -o $RW,remount $DEV $POINT       >/dev/null 2>&1 || return 0
-	
-	
-	$LT4 "D: ASLIB toolbox_mount: mounting using using /etc/recovery.fstab"
+	$LT4 "D: ASLIB toolbox_mount: mounting using /etc/recovery.fstab"
 	
 	DEV=;POINT=;FS=;
 	
-	for i in `cat /etc/recovery.fstab | grep -m 1 "$1"`; do
-		if [ -z "$POINT" ]; then POINT=$i;elif [ -z "$FS" ]; then FS=$i;elif [ -z "$DEV" ]; then DEV=$i;break;fi
-	done
-	
-	if [ "$FS" = "emmc" ]; then
-		$LT4 "D: ASLIB toolbox_mount: exec mount -t ext4 -o $RW $DEV $POINT"
-		! mount -t ext4 -o $RW $DEV $POINT            >/dev/null 2>&1 && \
-		$LT4 "D: ASLIB toolbox_mount: exec mount -t ext4 -o $RW,remount $DEV $POINT" && \
-		! mount -t ext4 -o $RW,remount $DEV $POINT    >/dev/null 2>&1 && \
-		$LT4 "D: ASLIB toolbox_mount: exec mount -t f2fs -o $RW $DEV $POINT" && \
-		! mount -t f2fs -o $RW $DEV $POINT            >/dev/null 2>&1 && \
-		$LT4 "D: ASLIB toolbox_mount: exec mount -t f2fs -o $RW,remount $DEV $POINT" && \
-		! mount -t f2fs -o $RW,remount $DEV $POINT    >/dev/null 2>&1 || return 0
+	if [ -e "/etc/recovery.fstab" ];then
+		for i in `cat /etc/recovery.fstab | grep -m1 "$1"`; do
+			#if [ -z "$DEV" ]; then DEV=$i;elif [ -z "$POINT" ]; then POINT=$i;elif [ -z "$FS" ]; then FS=$i;break;fi
+			[[ -n "$DEV" && -n "$POINT" && -n "$FS" ]] && break;
+			[ -z "$DEV" ] && {
+				echo "$i" | grep "/dev/block" >/dev/null 2>&1&& DEV="$i";
+			} || {
+				[ -z "$FS" ] && {
+					echo "$i" | grep -wo "auto\|vfat\|ext4\|ext3\|ext2\|f2fs\|fat32\|fat\|fuse\|emmc" >/dev/null 2>&1 && FS="$i";
+				} || {
+					[ -z "$POINT" ] && {
+						echo "$i" | grep -w "$1" >/dev/null 2>&1 && POINT="$i";
+					}
+				}
+			}
+		done
+		
+		if [ "$FS" = "emmc" ]; then
+			$LT4 "D: ASLIB toolbox_mount: exec mount -t ext4 -o $RW $DEV $POINT"
+			! mount -t ext4 -o $RW $DEV $POINT  && \
+			$LT4 "D: ASLIB toolbox_mount: exec mount -t ext4 -o $RW,remount $DEV" && \
+			! mount -t ext4 -o $RW,remount $DEV && \
+			$LT4 "D: ASLIB toolbox_mount: exec mount -t f2fs -o $RW $DEV $POINT" && \
+			! mount -t f2fs -o $RW $DEV $POINT  && \
+			$LT4 "D: ASLIB toolbox_mount: exec mount -t f2fs -o $RW,remount $DEV" && \
+			! mount -t f2fs -o $RW,remount $DEV || return 0
+		else
+			$LT4 "D: ASLIB toolbox_mount: exec mount -t $FS -o $RW $DEV $POINT"
+			! mount -t $FS -o $RW $DEV $POINT   && \
+			$LT4 "D: ASLIB toolbox_mount: exec mount -t $FS -o $RW,remount" && \
+			! mount -t $FS -o $RW,remount $DEV  || return 0
+		fi
 	else
-		$LT4 "D: ASLIB toolbox_mount: exec mount -t $FS -o $RW $DEV $POINT"
-		! mount -t $FS -o $RW $DEV $POINT             >/dev/null 2>&1 && \
-		$LT4 "D: ASLIB toolbox_mount: exec mount -t $FS -o $RW,remount $DEV $POINT" && \
-		! mount -t $FS -o $RW,remount $DEV $POINT     >/dev/null 2>&1 || return 0
+		$LT4 "W: ASLIB toolbox_mount: skipping /etc/recovery.fstab, target does not exist in file"
 	fi
+	$LT4 "E: ASLIB toolbox_mount: Failed to mount $1 $2"
 	return 1 # FAILED TO MOUNT
 }
 
@@ -86,11 +118,11 @@ remount_mountpoint() {
 	[ -n "$*" ] && {
 		! is_mounted $1 $2 && \
 		$LT4 "D: ASLIB remount_mountpoint: exec mount -o $2,remount $1" && \
-		! mount -o $2,remount $1    >/dev/null 2>&1 && \
+		! mount -o $2,remount $1 && \
 		$LT4 "D: ASLIB remount_mountpoint: exec mount -o $2,remount $1 $1" && \
-		! mount -o $2,remount $1 $1 >/dev/null 2>&1 && \
+		! mount -o $2,remount $1 $1 && \
 		$LT4 "D: ASLIB remount_mountpoint: exec toolbox_mount $1" && \
-		! toolbox_mount $1          >/dev/null 2>&1 && \
+		! toolbox_mount $1 $2 && \
 		{
 			$LT3 "I: ASLIB remount_mountpoint: $1 failed to remount"
 			return 1

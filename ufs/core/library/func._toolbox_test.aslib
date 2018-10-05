@@ -43,7 +43,7 @@ is_mounted() {
 	}
 	[ "$s" == "0" ] && \
 	$LT4 "D: ASLIB is_mounted: $1 is mounted $2" || \
-	$LT4 "D: ASLIB is_mounted: $1 is not mounted"
+	$LT4 "D: ASLIB is_mounted: $1 is not mounted $2"
 	return $s
 }
 
