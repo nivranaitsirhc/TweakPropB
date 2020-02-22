@@ -16,7 +16,7 @@
 #	to be unrecognizingly different from my original script, just reference me and this
 #	script on the header.
 #
-#	Dependents
+#	Dependency
 #		1.) root path must include a core folder.
 #		2.) core folder must have the installer.sh script.
 #		3.) installer.sh script is where your mainscript would be.
