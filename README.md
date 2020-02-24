@@ -71,3 +71,4 @@ Check out his [SourceCode](https://notabug.org/kl3/tweakprop)
 **CodRLabworks** <br />
 **CodR C.A | Christian Arvin** <br/>
 **Contact: [Me](mailto:naitsirhc.uriel@gmail.com)**<br />
+**Donations: [Paypal](https://paypal.me/caccabo?locale.x=en_US)**<br />
